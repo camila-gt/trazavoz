@@ -14,6 +14,7 @@ class DragAndDropState {
     var dragItem by mutableStateOf<Any?>(null)
     var dragOffset by mutableStateOf(Offset.Zero)
     var dragPosition by mutableStateOf(Offset.Zero)
+    var containerOffset by mutableStateOf(Offset.Zero)
 
     private val dropTargets = mutableMapOf<Any, Rect>()
 
@@ -43,6 +44,12 @@ class DragAndDropState {
         dragItem = null
         return target
     }
+
+    val currentDragAbsolutePosition: Offset
+        get() = dragPosition + dragOffset
+
+    val currentDragLocalPosition: Offset
+        get() = currentDragAbsolutePosition - containerOffset
 }
 
 val LocalDragAndDropState = compositionLocalOf { DragAndDropState() }
@@ -54,7 +61,11 @@ fun DragAndDropContainer(
 ) {
     val state = remember { DragAndDropState() }
     CompositionLocalProvider(LocalDragAndDropState provides state) {
-        Box(modifier = modifier) {
+        Box(
+            modifier = modifier.onGloballyPositioned {
+                state.containerOffset = it.boundsInWindow().topLeft
+            }
+        ) {
             content(state)
         }
     }

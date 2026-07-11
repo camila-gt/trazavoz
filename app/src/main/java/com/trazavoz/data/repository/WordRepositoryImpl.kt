@@ -24,6 +24,9 @@ class WordRepositoryImpl @Inject constructor(
     override suspend fun deleteWord(word: Word) =
         wordDao.deleteWord(word.toEntity())
 
+    override suspend fun updateWord(word: Word) =
+        wordDao.updateWord(word.toEntity())
+
     override suspend fun getWordById(id: Int): Word? =
         wordDao.getWordById(id)?.toDomain()
 }

@@ -8,5 +8,6 @@ interface WordRepository {
     fun getWordsByLetter(letter: String): Flow<List<Word>>
     suspend fun insertWord(word: Word): Long
     suspend fun deleteWord(word: Word)
+    suspend fun updateWord(word: Word)
     suspend fun getWordById(id: Int): Word?
 }

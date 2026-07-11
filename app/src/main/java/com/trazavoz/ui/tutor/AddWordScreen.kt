@@ -192,6 +192,12 @@ fun AddWordScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
 
+                        Text(
+                            text = "Puedes cambiar el nombre si la traducción no es correcta para tu región",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+
                         OutlinedTextField(
                             value = syllablesInput,
                             onValueChange = { syllablesInput = it },

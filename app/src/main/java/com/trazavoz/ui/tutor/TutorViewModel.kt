@@ -151,4 +151,31 @@ class TutorViewModel @Inject constructor(
             clearProgressStatsUseCase()
         }
     }
+
+    fun updateWord(word: Word, newText: String, newSyllablesInput: String, onFinished: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val cleanText = newText.trim().uppercase()
+            if (cleanText.isBlank() || newSyllablesInput.isBlank()) {
+                onFinished(false)
+                return@launch
+            }
+
+            val syllables = newSyllablesInput.split("-")
+                .map { it.trim().uppercase() }
+                .filter { it.isNotBlank() }
+
+            val initialLetter = if (cleanText.isNotEmpty()) cleanText[0].toString() else word.initialLetter
+            val associatedSyllable = syllables.firstOrNull() ?: ""
+
+            val updatedWord = word.copy(
+                text = cleanText,
+                initialLetter = initialLetter,
+                associatedSyllable = associatedSyllable,
+                syllables = syllables
+            )
+
+            wordRepository.updateWord(updatedWord)
+            onFinished(true)
+        }
+    }
 }

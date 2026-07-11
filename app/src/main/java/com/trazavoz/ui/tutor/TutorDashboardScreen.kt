@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.trazavoz.domain.model.Board
 import com.trazavoz.domain.model.Word
@@ -98,7 +99,7 @@ fun TutorDashboardScreen(
                 .weight(1f)
         ) {
             when (selectedTab) {
-                0 -> BibliotecaTab(allWords, onAddWordClick, onDeleteClick = { viewModel.deleteWord(it) })
+                0 -> BibliotecaTab(allWords, onAddWordClick, onDeleteClick = { viewModel.deleteWord(it) }, viewModel = viewModel)
                 1 -> TablerosTab(allBoards, allWords, viewModel)
                 2 -> StatsTab(allLogs, allWords, onClearClick = { viewModel.clearStats() })
                 3 -> AjustesTab(onSavePin = { pin, callback -> viewModel.updatePin(pin, callback) })
@@ -111,8 +112,11 @@ fun TutorDashboardScreen(
 fun BibliotecaTab(
     words: List<Word>,
     onAddWordClick: () -> Unit,
-    onDeleteClick: (Word) -> Unit
+    onDeleteClick: (Word) -> Unit,
+    viewModel: TutorViewModel
 ) {
+    var wordToEdit by remember { mutableStateOf<Word?>(null) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Button(
             onClick = onAddWordClick,
@@ -148,7 +152,8 @@ fun BibliotecaTab(
                         ) {
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
                             ) {
                                 val imageSource = if (word.localImagePath != null) {
                                     File(word.localImagePath)
@@ -166,17 +171,33 @@ fun BibliotecaTab(
                                 }
                             }
 
-                            Button(
-                                onClick = { onDeleteClick(word) },
-                                colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
-                            ) {
-                                Text("Eliminar", color = Color.Black)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = { wordToEdit = word },
+                                    colors = ButtonDefaults.buttonColors(containerColor = CelestePastel)
+                                ) {
+                                    Text("Editar", color = Color.Black)
+                                }
+                                Button(
+                                    onClick = { onDeleteClick(word) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
+                                ) {
+                                    Text("Eliminar", color = Color.Black)
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    wordToEdit?.let { word ->
+        EditWordDialog(
+            word = word,
+            viewModel = viewModel,
+            onDismiss = { wordToEdit = null }
+        )
     }
 }
 
@@ -506,6 +527,97 @@ fun AjustesTab(
 
         if (message.isNotEmpty()) {
             Text(message, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
+        }
+    }
+}
+
+@Composable
+fun EditWordDialog(
+    word: Word,
+    viewModel: TutorViewModel,
+    onDismiss: () -> Unit
+) {
+    var editText by remember { mutableStateOf(word.text) }
+    var editSyllables by remember { mutableStateOf(word.syllables.joinToString("-")) }
+    var message by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        ElevatedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = MaterialTheme.shapes.extraLarge
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Editar palabra",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+
+                OutlinedTextField(
+                    value = editText,
+                    onValueChange = {
+                        editText = it
+                        editSyllables = viewModel.getSuggestedSyllables(it)
+                    },
+                    label = { Text("Texto de la palabra") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text(
+                    text = "Puedes cambiar el nombre si la traducción no es correcta para tu región",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+
+                OutlinedTextField(
+                    value = editSyllables,
+                    onValueChange = { editSyllables = it },
+                    label = { Text("Sílabas (separadas por guiones, ej: JU-GO)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.updateWord(word, editText, editSyllables) { success ->
+                                if (success) {
+                                    onDismiss()
+                                } else {
+                                    message = "Verifica que los campos no estén vacíos."
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = VerdeManzanaPastel)
+                    ) {
+                        Text("Guardar", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
+                    ) {
+                        Text("Cancelar", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                if (message.isNotEmpty()) {
+                    Text(message, fontSize = 14.sp, color = CoralPastel)
+                }
+            }
         }
     }
 }

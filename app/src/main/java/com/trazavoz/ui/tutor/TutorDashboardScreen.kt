@@ -23,6 +23,7 @@ import com.trazavoz.ui.theme.CelestePastel
 import com.trazavoz.ui.theme.CoralPastel
 import com.trazavoz.ui.theme.VerdeManzanaPastel
 import java.io.File
+import kotlinx.coroutines.flow.firstOrNull
 
 @Composable
 fun TutorDashboardScreen(

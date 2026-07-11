@@ -32,6 +32,7 @@ import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.trazavoz.ui.audio.TrazavozTtsManager
 import com.trazavoz.ui.components.DragAndDropContainer
+import com.trazavoz.ui.components.DragAndDropState
 import com.trazavoz.ui.components.LocalDragAndDropState
 import com.trazavoz.ui.theme.CelestePastel
 import com.trazavoz.ui.theme.CoralPastel

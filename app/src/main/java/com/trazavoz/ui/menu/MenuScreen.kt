@@ -67,7 +67,7 @@ fun MenuScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = PurpuraSuave)
                 ) {
                     Text(
-                        text = "Modo Tutor",
+                        text = "Modo tutor",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
@@ -90,7 +90,7 @@ fun MenuScreen(
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Mis Tableros", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+                    text = { Text("Mis tableros", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
                 )
             }
 
@@ -141,7 +141,7 @@ fun MenuScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No hay tableros creados. Activa el Modo Tutor para agregar uno.",
+                                text = "No hay tableros creados. Activa el modo tutor para agregar uno.",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color.Gray,

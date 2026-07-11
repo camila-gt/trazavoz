@@ -56,7 +56,7 @@ fun TutorDashboardScreen(
             }
 
             Text(
-                text = "Panel del Tutor",
+                text = "Panel del tutor",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -111,7 +111,7 @@ fun BibliotecaTab(
                 .height(60.dp),
             colors = ButtonDefaults.buttonColors(containerColor = CelestePastel)
         ) {
-            Text("Añadir Nueva Palabra", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            Text("Añadir nueva palabra", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -202,7 +202,7 @@ fun TablerosTab(
             OutlinedTextField(
                 value = newBoardName,
                 onValueChange = { newBoardName = it },
-                label = { Text("Nombre del Tablero") },
+                label = { Text("Nombre del tablero") },
                 modifier = Modifier.weight(1f)
             )
 
@@ -351,13 +351,13 @@ fun StatsTab(
         ) {
             ElevatedCard(modifier = Modifier.weight(1f)) {
                 Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Partidas Jugadas", fontSize = 14.sp, color = Color.Gray)
+                    Text("Partidas jugadas", fontSize = 14.sp, color = Color.Gray)
                     Text("$totalGames", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 }
             }
             ElevatedCard(modifier = Modifier.weight(1f)) {
                 Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Errores Promedio", fontSize = 14.sp, color = Color.Gray)
+                    Text("Errores promedio", fontSize = 14.sp, color = Color.Gray)
                     Text(String.format("%.1f", averageErrors), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 }
             }
@@ -365,7 +365,7 @@ fun StatsTab(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Estadísticas por Palabra (Ordenadas por Dificultad)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Text("Estadísticas por palabra (ordenadas por dificultad)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -394,7 +394,7 @@ fun StatsTab(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text(word?.text ?: "Palabra Eliminada", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                Text(word?.text ?: "Palabra eliminada", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                                 Text("Jugado: $playedCount veces", fontSize = 14.sp, color = Color.Gray)
                             }
                             Row(
@@ -424,13 +424,13 @@ fun StatsTab(
             modifier = Modifier.fillMaxWidth().height(56.dp),
             colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
         ) {
-            Text("Limpiar Historial de Progreso", color = Color.Black, fontWeight = FontWeight.Bold)
+            Text("Limpiar historial de progreso", color = Color.Black, fontWeight = FontWeight.Bold)
         }
 
         if (showConfirmDialog) {
             AlertDialog(
                 onDismissRequest = { showConfirmDialog = false },
-                title = { Text("¿Limpiar Estadísticas?") },
+                title = { Text("¿Limpiar estadísticas?") },
                 text = { Text("Se borrarán de forma permanente todos los registros del progreso del niño. Esta acción no se puede deshacer.") },
                 confirmButton = {
                     Button(
@@ -467,7 +467,7 @@ fun AjustesTab(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Cambiar PIN del Modo Tutor", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Text("Cambiar PIN del modo tutor", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
 
         OutlinedTextField(
             value = newPin,
@@ -491,7 +491,7 @@ fun AjustesTab(
             modifier = Modifier.width(260.dp).height(56.dp),
             colors = ButtonDefaults.buttonColors(containerColor = CelestePastel)
         ) {
-            Text("Guardar Cambios", color = Color.Black, fontWeight = FontWeight.Bold)
+            Text("Guardar cambios", color = Color.Black, fontWeight = FontWeight.Bold)
         }
 
         if (message.isNotEmpty()) {

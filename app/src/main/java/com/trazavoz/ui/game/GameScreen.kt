@@ -78,7 +78,7 @@ fun GameScreen(
                 }
 
                 Text(
-                    text = "¡Arma la Palabra!",
+                    text = "¡Arma la palabra!",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -393,7 +393,7 @@ fun CelebrationDialog(
                 )
 
                 Text(
-                    text = "¡Excelente Trabajo!",
+                    text = "¡Excelente trabajo!",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.Black,
@@ -435,7 +435,7 @@ fun CelebrationDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
                     ) {
                         Text(
-                            text = "Salir al Menú",
+                            text = "Salir al menú",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black

@@ -61,7 +61,7 @@ fun AddWordScreen(
             }
 
             Text(
-                text = "Buscar y Añadir Palabra",
+                text = "Buscar y añadir palabra",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -174,7 +174,7 @@ fun AddWordScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Guardar Nueva Palabra", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        Text("Guardar nueva palabra", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
 
                         AsyncImage(
                             model = pic.imageUrl,
@@ -195,7 +195,7 @@ fun AddWordScreen(
                         OutlinedTextField(
                             value = syllablesInput,
                             onValueChange = { syllablesInput = it },
-                            label = { Text("Sílabas (Separadas por guiones, ej: ME-SA)") },
+                            label = { Text("Sílabas (separadas por guiones, ej: ME-SA)") },
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -218,7 +218,7 @@ fun AddWordScreen(
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = VerdeManzanaPastel)
                         ) {
-                            Text("Guardar en Biblioteca", color = Color.Black, fontWeight = FontWeight.Bold)
+                            Text("Guardar en biblioteca", color = Color.Black, fontWeight = FontWeight.Bold)
                         }
 
                         if (statusMessage.isNotEmpty()) {

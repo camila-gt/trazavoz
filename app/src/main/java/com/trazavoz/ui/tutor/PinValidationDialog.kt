@@ -45,7 +45,7 @@ fun PinValidationDialog(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Acceso Modo Tutor",
+                    text = "Acceso modo tutor",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black

@@ -12,7 +12,7 @@ data class BoardWithWords(
         associateBy = Junction(
             value = WordBoardCrossRef::class,
             parentColumn = "boardId",
-            childColumn = "wordId"
+            entityColumn = "wordId"
         )
     )
     val words: List<WordEntity>

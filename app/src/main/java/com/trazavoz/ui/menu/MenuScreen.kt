@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -30,6 +31,10 @@ fun MenuScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showPinDialog by remember { mutableStateOf(false) }
 
+    val config = LocalConfiguration.current
+    val screenHeight = config.screenHeightDp.dp
+    val isCompact = screenHeight < 400.dp
+
     val alphabet = remember {
         ("ABCDEFGHIJKLMNÑOPQRSTUVWXYZ").map { it.toString() }
     }
@@ -37,6 +42,14 @@ fun MenuScreen(
     val pastelColors = remember {
         listOf(CoralPastel, CelestePastel, VerdeManzanaPastel, PurpuraSuave, AmarilloCrema)
     }
+
+    val titleSize = if (isCompact) 24.sp else 36.sp
+    val tabFontSize = if (isCompact) 14.sp else 20.sp
+    val gridMinSize = if (isCompact) 65.dp else 85.dp
+    val cardSize = if (isCompact) 65.dp else 85.dp
+    val letterFontSize = if (isCompact) 22.sp else 32.sp
+    val padding = if (isCompact) 8.dp else 16.dp
+    val tutorBtnHeight = if (isCompact) 40.dp else 60.dp
 
     Box(
         modifier = Modifier
@@ -46,7 +59,7 @@ fun MenuScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(padding),
             verticalArrangement = Arrangement.Top
         ) {
             Row(
@@ -56,26 +69,26 @@ fun MenuScreen(
             ) {
                 Text(
                     text = "Trazavoz",
-                    fontSize = 36.sp,
+                    fontSize = titleSize,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
 
                 Button(
                     onClick = { showPinDialog = true },
-                    modifier = Modifier.height(60.dp),
+                    modifier = Modifier.height(tutorBtnHeight),
                     colors = ButtonDefaults.buttonColors(containerColor = PurpuraSuave)
                 ) {
                     Text(
                         text = "Modo tutor",
-                        fontSize = 18.sp,
+                        fontSize = if (isCompact) 14.sp else 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 16.dp))
 
             TabRow(
                 selectedTabIndex = selectedTab,
@@ -85,16 +98,16 @@ fun MenuScreen(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Abecedario", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+                    text = { Text("Abecedario", fontSize = tabFontSize, fontWeight = FontWeight.Bold) }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Mis tableros", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+                    text = { Text("Mis tableros", fontSize = tabFontSize, fontWeight = FontWeight.Bold) }
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 16.dp))
 
             Box(
                 modifier = Modifier
@@ -103,9 +116,9 @@ fun MenuScreen(
             ) {
                 if (selectedTab == 0) {
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 85.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        columns = GridCells.Adaptive(minSize = gridMinSize),
+                        horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(alphabet) { letter ->
@@ -114,7 +127,7 @@ fun MenuScreen(
 
                             ElevatedCard(
                                 modifier = Modifier
-                                    .size(85.dp)
+                                    .size(cardSize)
                                     .clickable { onLetterClick(letter) },
                                 shape = MaterialTheme.shapes.medium,
                                 colors = CardDefaults.elevatedCardColors(containerColor = color)
@@ -125,7 +138,7 @@ fun MenuScreen(
                                 ) {
                                     Text(
                                         text = letter,
-                                        fontSize = 32.sp,
+                                        fontSize = letterFontSize,
                                         fontWeight = FontWeight.ExtraBold,
                                         textAlign = TextAlign.Center,
                                         color = Color.Black
@@ -142,7 +155,7 @@ fun MenuScreen(
                         ) {
                             Text(
                                 text = "No hay tableros creados. Activa el modo tutor para agregar uno.",
-                                fontSize = 20.sp,
+                                fontSize = if (isCompact) 16.sp else 20.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color.Gray,
                                 textAlign = TextAlign.Center
@@ -151,15 +164,15 @@ fun MenuScreen(
                     } else {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(3),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(boards) { board ->
                                 ElevatedCard(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(110.dp)
+                                        .height(if (isCompact) 70.dp else 110.dp)
                                         .clickable { onBoardClick(board.id) },
                                     shape = MaterialTheme.shapes.large,
                                     colors = CardDefaults.elevatedCardColors(containerColor = AmarilloCrema)
@@ -167,13 +180,13 @@ fun MenuScreen(
                                     Column(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .padding(16.dp),
+                                            .padding(if (isCompact) 8.dp else 16.dp),
                                         verticalArrangement = Arrangement.Center,
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Text(
                                             text = board.name,
-                                            fontSize = 24.sp,
+                                            fontSize = if (isCompact) 18.sp else 24.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.Black
                                         )

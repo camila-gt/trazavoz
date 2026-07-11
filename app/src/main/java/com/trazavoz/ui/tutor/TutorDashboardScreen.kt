@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -37,51 +38,59 @@ fun TutorDashboardScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
+    val config = LocalConfiguration.current
+    val screenHeight = config.screenHeightDp.dp
+    val isCompact = screenHeight < 400.dp
+    val padding = if (isCompact) 8.dp else 16.dp
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .padding(padding)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(
                 onClick = onBackClick,
-                modifier = Modifier.size(width = 120.dp, height = 60.dp),
+                modifier = Modifier.size(
+                    width = if (isCompact) 90.dp else 120.dp,
+                    height = if (isCompact) 40.dp else 60.dp
+                ),
                 colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
             ) {
-                Text("Volver", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("Volver", fontSize = if (isCompact) 14.sp else 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             }
 
             Text(
                 text = "Panel del tutor",
-                fontSize = 32.sp,
+                fontSize = if (isCompact) 22.sp else 32.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 16.dp))
 
         TabRow(selectedTabIndex = selectedTab) {
             Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                Text("Biblioteca", modifier = Modifier.padding(12.dp), fontWeight = FontWeight.Bold)
+                Text("Biblioteca", modifier = Modifier.padding(if (isCompact) 6.dp else 12.dp), fontWeight = FontWeight.Bold, fontSize = if (isCompact) 12.sp else 14.sp)
             }
             Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                Text("Tableros", modifier = Modifier.padding(12.dp), fontWeight = FontWeight.Bold)
+                Text("Tableros", modifier = Modifier.padding(if (isCompact) 6.dp else 12.dp), fontWeight = FontWeight.Bold, fontSize = if (isCompact) 12.sp else 14.sp)
             }
             Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
-                Text("Estadísticas", modifier = Modifier.padding(12.dp), fontWeight = FontWeight.Bold)
+                Text("Estadísticas", modifier = Modifier.padding(if (isCompact) 6.dp else 12.dp), fontWeight = FontWeight.Bold, fontSize = if (isCompact) 12.sp else 14.sp)
             }
             Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }) {
-                Text("Ajustes PIN", modifier = Modifier.padding(12.dp), fontWeight = FontWeight.Bold)
+                Text("Ajustes PIN", modifier = Modifier.padding(if (isCompact) 6.dp else 12.dp), fontWeight = FontWeight.Bold, fontSize = if (isCompact) 12.sp else 14.sp)
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 16.dp))
 
         Box(
             modifier = Modifier

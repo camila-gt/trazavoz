@@ -27,6 +27,10 @@ class ProgressRepositoryImpl @Inject constructor(
 
     override fun getAllLogs(): Flow<List<ProgressLog>> =
         progressDao.getAllLogsFlow().map { list -> list.map { it.toDomain() } }
+
+    override suspend fun clearAllLogs() {
+        progressDao.deleteAllLogs()
+    }
 }
 
 fun ProgressLogEntity.toDomain() = ProgressLog(id, wordId, errorsCount, isCompleted, timestamp)

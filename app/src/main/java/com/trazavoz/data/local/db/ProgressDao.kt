@@ -16,4 +16,7 @@ interface ProgressDao {
 
     @Query("SELECT * FROM progress_logs ORDER BY timestamp DESC")
     fun getAllLogsFlow(): Flow<List<ProgressLogEntity>>
+
+    @Query("DELETE FROM progress_logs")
+    suspend fun deleteAllLogs()
 }

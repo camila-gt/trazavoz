@@ -1,5 +1,9 @@
 package com.trazavoz.ui.tutor
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,20 +14,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.trazavoz.domain.model.Board
 import com.trazavoz.domain.model.Word
-import com.trazavoz.ui.theme.CelestePastel
-import com.trazavoz.ui.theme.CoralPastel
-import com.trazavoz.ui.theme.VerdeManzanaPastel
+import com.trazavoz.ui.components.ScreenHeader
+import com.trazavoz.ui.components.minTouchTarget
+import com.trazavoz.ui.theme.WindowInfo
+import com.trazavoz.ui.theme.rememberWindowInfo
 import java.io.File
 import kotlinx.coroutines.flow.firstOrNull
 
@@ -39,9 +41,8 @@ fun TutorDashboardScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    val config = LocalConfiguration.current
-    val screenHeight = config.screenHeightDp.dp
-    val isCompact = screenHeight < 400.dp
+    val windowInfo = rememberWindowInfo()
+    val isCompact = windowInfo.isCompactHeight
     val padding = if (isCompact) 8.dp else 16.dp
 
     Column(
@@ -50,29 +51,7 @@ fun TutorDashboardScreen(
             .background(MaterialTheme.colorScheme.background)
             .padding(padding)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = onBackClick,
-                modifier = Modifier.size(
-                    width = if (isCompact) 90.dp else 120.dp,
-                    height = if (isCompact) 40.dp else 60.dp
-                ),
-                colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
-            ) {
-                Text("Volver", fontSize = if (isCompact) 14.sp else 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-            }
-
-            Text(
-                text = "Panel del tutor",
-                fontSize = if (isCompact) 22.sp else 32.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
+        ScreenHeader(title = "Panel del tutor", onBackClick = onBackClick, windowInfo = windowInfo)
 
         Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 16.dp))
 
@@ -98,11 +77,17 @@ fun TutorDashboardScreen(
                 .fillMaxWidth()
                 .weight(1f)
         ) {
-            when (selectedTab) {
-                0 -> BibliotecaTab(allWords, onAddWordClick, onDeleteClick = { viewModel.deleteWord(it) }, viewModel = viewModel)
-                1 -> TablerosTab(allBoards, allWords, viewModel)
-                2 -> StatsTab(allLogs, allWords, onClearClick = { viewModel.clearStats() })
-                3 -> AjustesTab(onSavePin = { pin, callback -> viewModel.updatePin(pin, callback) })
+            AnimatedContent(
+                targetState = selectedTab,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "tutor-tabs"
+            ) { tab ->
+                when (tab) {
+                    0 -> BibliotecaTab(allWords, onAddWordClick, onDeleteClick = { viewModel.deleteWord(it) }, viewModel = viewModel)
+                    1 -> TablerosTab(allBoards, allWords, viewModel, windowInfo)
+                    2 -> StatsTab(allLogs, allWords, onClearClick = { viewModel.clearStats() })
+                    3 -> AjustesTab(onSavePin = { pin, callback -> viewModel.updatePin(pin, callback) })
+                }
             }
         }
     }
@@ -123,16 +108,16 @@ fun BibliotecaTab(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = CelestePastel)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
-            Text("Añadir nueva palabra", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            Text("Añadir nueva palabra", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         if (words.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No hay palabras en la biblioteca.", color = Color.Gray)
+                Text("No hay palabras en la biblioteca.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(
@@ -166,23 +151,25 @@ fun BibliotecaTab(
                                     modifier = Modifier.size(50.dp)
                                 )
                                 Column {
-                                    Text(word.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                                    Text(word.syllables.joinToString(" - "), fontSize = 14.sp, color = Color.Gray)
+                                    Text(word.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                                    Text(word.syllables.joinToString(" - "), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
 
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(
                                     onClick = { wordToEdit = word },
-                                    colors = ButtonDefaults.buttonColors(containerColor = CelestePastel)
+                                    modifier = Modifier.minTouchTarget(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                 ) {
-                                    Text("Editar", color = Color.Black)
+                                    Text("Editar", color = MaterialTheme.colorScheme.onPrimary)
                                 }
                                 Button(
                                     onClick = { onDeleteClick(word) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
+                                    modifier = Modifier.minTouchTarget(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                                 ) {
-                                    Text("Eliminar", color = Color.Black)
+                                    Text("Eliminar", color = MaterialTheme.colorScheme.onError)
                                 }
                             }
                         }
@@ -205,13 +192,12 @@ fun BibliotecaTab(
 fun TablerosTab(
     boards: List<Board>,
     allWords: List<Word>,
-    viewModel: TutorViewModel
+    viewModel: TutorViewModel,
+    windowInfo: WindowInfo
 ) {
     var newBoardName by remember { mutableStateOf("") }
     var selectedBoardForEdit by remember { mutableStateOf<Board?>(null) }
     val boardWords = remember { mutableStateMapOf<Int, Boolean>() }
-
-    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(selectedBoardForEdit) {
         boardWords.clear()
@@ -242,21 +228,18 @@ fun TablerosTab(
                     viewModel.createBoard(newBoardName)
                     newBoardName = ""
                 },
-                modifier = Modifier.height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = CelestePastel)
+                modifier = Modifier.height(56.dp).minTouchTarget(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("Crear", color = Color.Black, fontWeight = FontWeight.Bold)
+                Text("Crear", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        val boardsListPane: @Composable () -> Unit = {
             LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
+                modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(boards) { board ->
@@ -272,7 +255,7 @@ fun TablerosTab(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(board.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Text(board.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                             Button(
                                 onClick = {
                                     if (selectedBoardForEdit?.id == board.id) {
@@ -280,26 +263,28 @@ fun TablerosTab(
                                     }
                                     viewModel.deleteBoard(board)
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
+                                modifier = Modifier.minTouchTarget(),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                             ) {
-                                Text("Eliminar", color = Color.Black)
+                                Text("Eliminar", color = MaterialTheme.colorScheme.onError)
                             }
                         }
                     }
                 }
             }
+        }
 
+        val wordsChecklistPane: @Composable () -> Unit = {
             Box(
                 modifier = Modifier
-                    .weight(1.2f)
-                    .fillMaxHeight()
-                    .border(2.dp, Color.LightGray, MaterialTheme.shapes.large)
+                    .fillMaxSize()
+                    .border(2.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large)
                     .padding(12.dp)
             ) {
                 val activeBoard = selectedBoardForEdit
                 if (activeBoard == null) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Selecciona un tablero para editar sus palabras", color = Color.Gray, textAlign = TextAlign.Center)
+                        Text("Selecciona un tablero para editar sus palabras", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                     }
                 } else {
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -307,12 +292,13 @@ fun TablerosTab(
                             text = "Palabras en: ${activeBoard.name}",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
 
                         if (allWords.isEmpty()) {
                             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Text("Agrega palabras a la biblioteca primero", color = Color.Gray, textAlign = TextAlign.Center)
+                                Text("Agrega palabras a la biblioteca primero", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                             }
                         } else {
                             LazyColumn(
@@ -324,6 +310,7 @@ fun TablerosTab(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
+                                            .heightIn(min = 48.dp)
                                             .clickable {
                                                 val nextState = !isChecked
                                                 boardWords[word.id] = nextState
@@ -340,13 +327,31 @@ fun TablerosTab(
                                             }
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text(word.text, fontSize = 16.sp, color = Color.Black)
+                                        Text(word.text, fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
                                     }
                                 }
                             }
                         }
                     }
                 }
+            }
+        }
+
+        if (windowInfo.isExpandedWidth) {
+            Row(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) { boardsListPane() }
+                Box(modifier = Modifier.weight(1.2f).fillMaxHeight()) { wordsChecklistPane() }
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) { boardsListPane() }
+                Box(modifier = Modifier.weight(1.2f).fillMaxWidth()) { wordsChecklistPane() }
             }
         }
     }
@@ -359,6 +364,18 @@ fun StatsTab(
     onClearClick: () -> Unit
 ) {
     var showConfirmDialog by remember { mutableStateOf(false) }
+
+    val windowInfo = rememberWindowInfo()
+    val statNumberSize = when {
+        windowInfo.isCompactHeight -> 22.sp
+        windowInfo.isExpandedWidth -> 34.sp
+        else -> 26.sp
+    }
+    val sectionTitleSize = when {
+        windowInfo.isCompactHeight -> 16.sp
+        windowInfo.isExpandedWidth -> 20.sp
+        else -> 17.sp
+    }
 
     val wordMap = remember(words) { words.associateBy { it.id } }
 
@@ -382,27 +399,27 @@ fun StatsTab(
         ) {
             ElevatedCard(modifier = Modifier.weight(1f)) {
                 Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Partidas jugadas", fontSize = 14.sp, color = Color.Gray)
-                    Text("$totalGames", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    Text("Partidas jugadas", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$totalGames", fontSize = statNumberSize, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                 }
             }
             ElevatedCard(modifier = Modifier.weight(1f)) {
                 Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Errores promedio", fontSize = 14.sp, color = Color.Gray)
-                    Text(String.format("%.1f", averageErrors), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    Text("Errores promedio", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(String.format("%.1f", averageErrors), fontSize = statNumberSize, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Estadísticas por palabra (ordenadas por dificultad)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Text("Estadísticas por palabra (ordenadas por dificultad)", fontSize = sectionTitleSize, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
 
         Spacer(modifier = Modifier.height(8.dp))
 
         if (wordStats.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No hay historial registrado.", color = Color.Gray)
+                Text("No hay historial registrado.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(
@@ -425,8 +442,8 @@ fun StatsTab(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text(word?.text ?: "Palabra eliminada", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                                Text("Jugado: $playedCount veces", fontSize = 14.sp, color = Color.Gray)
+                                Text(word?.text ?: "Palabra eliminada", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                                Text("Jugado: $playedCount veces", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -436,7 +453,7 @@ fun StatsTab(
                                     text = String.format("%.1f errores prom.", avgErrors),
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = if (avgErrors > 2.0f) CoralPastel else Color.DarkGray
+                                    color = if (avgErrors > 2.0f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 if (avgErrors > 2.0f) {
                                     Text("⚠️", fontSize = 20.sp)
@@ -453,9 +470,9 @@ fun StatsTab(
         Button(
             onClick = { showConfirmDialog = true },
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
         ) {
-            Text("Limpiar historial de progreso", color = Color.Black, fontWeight = FontWeight.Bold)
+            Text("Limpiar historial de progreso", color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
         }
 
         if (showConfirmDialog) {
@@ -469,9 +486,9 @@ fun StatsTab(
                             onClearClick()
                             showConfirmDialog = false
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Text("Sí, Borrar", color = Color.Black)
+                        Text("Sí, Borrar", color = MaterialTheme.colorScheme.onError)
                     }
                 },
                 dismissButton = {
@@ -498,7 +515,7 @@ fun AjustesTab(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Cambiar PIN del modo tutor", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Text("Cambiar PIN del modo tutor", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
 
         OutlinedTextField(
             value = newPin,
@@ -520,13 +537,13 @@ fun AjustesTab(
                 }
             },
             modifier = Modifier.width(260.dp).height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = CelestePastel)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
-            Text("Guardar cambios", color = Color.Black, fontWeight = FontWeight.Bold)
+            Text("Guardar cambios", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
         }
 
         if (message.isNotEmpty()) {
-            Text(message, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
+            Text(message, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -557,9 +574,9 @@ fun EditWordDialog(
             ) {
                 Text(
                     text = "Editar palabra",
-                    fontSize = 22.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onBackground
                 )
 
                 OutlinedTextField(
@@ -575,7 +592,7 @@ fun EditWordDialog(
                 Text(
                     text = "Puedes cambiar el nombre si la traducción no es correcta para tu región",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 OutlinedTextField(
@@ -600,22 +617,22 @@ fun EditWordDialog(
                             }
                         },
                         modifier = Modifier.weight(1f).height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = VerdeManzanaPastel)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
                     ) {
-                        Text("Guardar", color = Color.Black, fontWeight = FontWeight.Bold)
+                        Text("Guardar", color = MaterialTheme.colorScheme.onTertiary, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f).height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {
-                        Text("Cancelar", color = Color.Black, fontWeight = FontWeight.Bold)
+                        Text("Cancelar", color = MaterialTheme.colorScheme.onSecondary, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 if (message.isNotEmpty()) {
-                    Text(message, fontSize = 14.sp, color = CoralPastel)
+                    Text(message, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
                 }
             }
         }

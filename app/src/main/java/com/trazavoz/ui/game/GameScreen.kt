@@ -17,13 +17,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,9 +37,9 @@ import com.trazavoz.ui.audio.TrazavozTtsManager
 import com.trazavoz.ui.components.DragAndDropContainer
 import com.trazavoz.ui.components.DragAndDropState
 import com.trazavoz.ui.components.LocalDragAndDropState
-import com.trazavoz.ui.theme.CelestePastel
-import com.trazavoz.ui.theme.CoralPastel
-import com.trazavoz.ui.theme.VerdeManzanaPastel
+import com.trazavoz.ui.components.ScreenHeader
+import com.trazavoz.ui.theme.colorForLetter
+import com.trazavoz.ui.theme.rememberWindowInfo
 import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.math.roundToInt
@@ -53,17 +53,16 @@ fun GameScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    val config = LocalConfiguration.current
-    val screenHeight = config.screenHeightDp.dp
-    val screenWidth = config.screenWidthDp.dp
-    val isCompact = screenHeight < 400.dp
-    val isLandscape = screenWidth > screenHeight
+    val windowInfo = rememberWindowInfo()
+    val screenHeight = windowInfo.screenHeightDp
+    val screenWidth = windowInfo.screenWidthDp
+    val isCompact = windowInfo.isCompactHeight
+    val isLandscape = windowInfo.isLandscape
 
     val imageSize = if (isCompact) min(screenHeight * 0.4f, 160.dp) else if (!isLandscape) min(screenWidth * 0.4f, 180.dp) else 220.dp
     val slotSize = if (isCompact) min(screenHeight * 0.18f, 60.dp) else if (!isLandscape) 60.dp else 80.dp
     val letterSize = if (isCompact) min(screenHeight * 0.18f, 60.dp) else if (!isLandscape) 60.dp else 80.dp
     val letterTrayHeight = if (isCompact) min(screenHeight * 0.22f, 80.dp) else if (!isLandscape) 90.dp else 110.dp
-    val titleFontSize = if (isCompact) 22.sp else if (!isLandscape) 24.sp else 32.sp
     val slotFontSize = if (isCompact) 24.sp else if (!isLandscape) 28.sp else 36.sp
     val syllableBtnHeight = if (isCompact) 40.dp else if (!isLandscape) 44.dp else 60.dp
     val syllableFontSize = if (isCompact) 16.sp else if (!isLandscape) 18.sp else 22.sp
@@ -86,41 +85,27 @@ fun GameScreen(
                 .padding(padding),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = onBackClick,
-                    modifier = Modifier.size(width = headerBtnWidth, height = headerBtnHeight),
-                    colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
-                ) {
-                    Text("Volver", fontSize = if (isCompact) 14.sp else 18.sp, fontWeight = FontWeight.Bold)
+            ScreenHeader(
+                title = "¡Arma la palabra!",
+                onBackClick = onBackClick,
+                windowInfo = windowInfo,
+                trailing = {
+                    Box(
+                        modifier = Modifier
+                            .size(height = headerBtnHeight, width = headerBtnWidth)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.tertiary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "⭐ ${uiState.errorsCount}",
+                            fontSize = if (isCompact) 16.sp else 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onTertiary
+                        )
+                    }
                 }
-
-                Text(
-                    text = "¡Arma la palabra!",
-                    fontSize = titleFontSize,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
-                Box(
-                    modifier = Modifier
-                        .size(height = headerBtnHeight, width = headerBtnWidth)
-                        .clip(CircleShape)
-                        .background(VerdeManzanaPastel),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "⭐ ${uiState.errorsCount}",
-                        fontSize = if (isCompact) 16.sp else 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.DarkGray
-                    )
-                }
-            }
+            )
 
             uiState.word?.let { word ->
                 if (isLandscape) {
@@ -223,7 +208,7 @@ fun GameScreen(
                     }
                     .alpha(0.85f),
                 shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.elevatedCardColors(containerColor = CelestePastel)
+                colors = CardDefaults.elevatedCardColors(containerColor = colorForLetter(draggedLetter.char))
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -233,6 +218,7 @@ fun GameScreen(
                         text = draggedLetter.char.toString(),
                         fontSize = slotFontSize,
                         fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onBackground,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -267,7 +253,7 @@ fun WordImageAndSyllables(
         ElevatedCard(
             modifier = Modifier
                 .size(imageSize)
-                .border(4.dp, CelestePastel, MaterialTheme.shapes.large),
+                .border(4.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.large),
             shape = MaterialTheme.shapes.large
         ) {
             Box(
@@ -298,13 +284,13 @@ fun WordImageAndSyllables(
                 Button(
                     onClick = { ttsManager.hablarSilaba(syllable) },
                     modifier = Modifier.height(syllableBtnHeight),
-                    colors = ButtonDefaults.buttonColors(containerColor = CelestePastel)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text(
                         text = syllable,
                         fontSize = syllableFontSize,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -337,13 +323,13 @@ fun DropSlotComposable(
             }
             .clip(MaterialTheme.shapes.medium)
             .background(
-                if (slot.placedLetter != null) CelestePastel else Color.LightGray.copy(
+                if (slot.placedLetter != null) colorForLetter(slot.placedLetter.char) else Color.LightGray.copy(
                     alpha = 0.4f
                 )
             )
             .border(
                 width = 3.dp,
-                color = if (slot.placedLetter != null) CelestePastel else Color.Gray,
+                color = if (slot.placedLetter != null) colorForLetter(slot.placedLetter.char) else MaterialTheme.colorScheme.outline,
                 shape = MaterialTheme.shapes.medium
             ),
         contentAlignment = Alignment.Center
@@ -353,14 +339,14 @@ fun DropSlotComposable(
                 text = slot.placedLetter.char.toString(),
                 fontSize = fontSize,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onBackground
             )
         } else {
             Text(
                 text = "_",
                 fontSize = fontSize * 0.9f,
                 fontWeight = FontWeight.Bold,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
         }
@@ -410,7 +396,8 @@ fun DraggableLetterComposable(
                     }
                 )
             },
-        shape = MaterialTheme.shapes.medium
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.elevatedCardColors(containerColor = colorForLetter(letter.char))
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -420,6 +407,7 @@ fun DraggableLetterComposable(
                 text = letter.char.toString(),
                 fontSize = fontSize,
                 fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
         }
@@ -432,17 +420,44 @@ fun CelebrationDialog(
     onBackClick: () -> Unit,
     onReplayClick: () -> Unit
 ) {
-    val config = LocalConfiguration.current
-    val screenHeight = config.screenHeightDp.dp
-    val isCompact = screenHeight < 400.dp
+    val windowInfo = rememberWindowInfo()
+    val isCompact = windowInfo.isCompactHeight
+    val starsSize = when {
+        isCompact -> 26.sp
+        windowInfo.isExpandedWidth -> 44.sp
+        else -> 34.sp
+    }
+    val dialogTitleSize = when {
+        isCompact -> 18.sp
+        windowInfo.isExpandedWidth -> 26.sp
+        else -> 21.sp
+    }
+    val dialogSubtitleSize = when {
+        isCompact -> 14.sp
+        windowInfo.isExpandedWidth -> 18.sp
+        else -> 15.sp
+    }
+    val dialogButtonTextSize = when {
+        isCompact -> 13.sp
+        windowInfo.isExpandedWidth -> 17.sp
+        else -> 14.sp
+    }
+    val dialogButtonHeight = if (isCompact) 44.dp else 52.dp
+
+    val entrance = remember { Animatable(0.85f) }
+    LaunchedEffect(Unit) {
+        entrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+    }
 
     Dialog(
         onDismissRequest = {}
     ) {
         ElevatedCard(
             modifier = Modifier
-                .fillMaxWidth(if (isCompact) 0.85f else 1f)
-                .padding(if (isCompact) 8.dp else 16.dp),
+                .fillMaxWidth(if (isCompact) 0.85f else 0.92f)
+                .padding(if (isCompact) 8.dp else 16.dp)
+                .scale(entrance.value)
+                .alpha(entrance.value),
             shape = MaterialTheme.shapes.extraLarge
         ) {
             Column(
@@ -454,15 +469,15 @@ fun CelebrationDialog(
             ) {
                 Text(
                     text = "⭐⭐⭐",
-                    fontSize = if (isCompact) 32.sp else 48.sp,
+                    fontSize = starsSize,
                     modifier = Modifier.padding(bottom = if (isCompact) 8.dp else 16.dp)
                 )
 
                 Text(
                     text = "¡Excelente trabajo!",
-                    fontSize = if (isCompact) 22.sp else 28.sp,
+                    fontSize = dialogTitleSize,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center
                 )
 
@@ -470,9 +485,9 @@ fun CelebrationDialog(
 
                 Text(
                     text = "Armaste la palabra: $wordText",
-                    fontSize = if (isCompact) 16.sp else 20.sp,
+                    fontSize = dialogSubtitleSize,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
@@ -484,27 +499,27 @@ fun CelebrationDialog(
                 ) {
                     Button(
                         onClick = onReplayClick,
-                        modifier = Modifier.height(if (isCompact) 44.dp else 60.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = CelestePastel)
+                        modifier = Modifier.height(dialogButtonHeight),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text(
                             text = "Jugar de nuevo",
-                            fontSize = if (isCompact) 14.sp else 18.sp,
+                            fontSize = dialogButtonTextSize,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
 
                     Button(
                         onClick = onBackClick,
-                        modifier = Modifier.height(if (isCompact) 44.dp else 60.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
+                        modifier = Modifier.height(dialogButtonHeight),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {
                         Text(
                             text = "Salir al menú",
-                            fontSize = if (isCompact) 14.sp else 18.sp,
+                            fontSize = dialogButtonTextSize,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 }

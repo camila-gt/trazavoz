@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
@@ -21,8 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.trazavoz.ui.menu.MenuViewModel
-import com.trazavoz.ui.theme.CelestePastel
-import com.trazavoz.ui.theme.CoralPastel
+import com.trazavoz.ui.theme.rememberWindowInfo
 import kotlinx.coroutines.launch
 
 @Composable
@@ -35,10 +33,10 @@ fun PinValidationDialog(
     var isError by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    val config = LocalConfiguration.current
-    val screenHeight = config.screenHeightDp.dp
-    val screenWidth = config.screenWidthDp.dp
-    val isLandscape = screenWidth > screenHeight
+    val windowInfo = rememberWindowInfo()
+    val screenHeight = windowInfo.screenHeightDp
+    val screenWidth = windowInfo.screenWidthDp
+    val isLandscape = windowInfo.isLandscape
 
     val dialogMaxHeight = if (isLandscape) screenHeight * 0.92f else screenHeight * 0.7f
     val dialogWidth = if (isLandscape) min(screenWidth * 0.4f, 320.dp) else min(screenWidth * 0.85f, 340.dp)
@@ -72,7 +70,7 @@ fun PinValidationDialog(
                     text = "Acceso modo tutor",
                     fontSize = titleSize,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onBackground
                 )
 
                 Spacer(modifier = Modifier.height(sectionSpacing))
@@ -88,13 +86,13 @@ fun PinValidationDialog(
                                 .size(dotSize)
                                 .clip(CircleShape)
                                 .background(
-                                    if (isError) CoralPastel
-                                    else if (active) CelestePastel
+                                    if (isError) MaterialTheme.colorScheme.error
+                                    else if (active) MaterialTheme.colorScheme.primary
                                     else Color.LightGray.copy(alpha = 0.5f)
                                 )
                                 .border(
                                     width = 2.dp,
-                                    color = if (isError) CoralPastel else Color.DarkGray,
+                                    color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
                                     shape = CircleShape
                                 )
                         )
@@ -155,7 +153,7 @@ fun PinValidationDialog(
                                         text = key,
                                         fontSize = keyFontSize,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.Black
+                                        color = MaterialTheme.colorScheme.onBackground
                                     )
                                 }
                             }
@@ -173,7 +171,7 @@ fun PinValidationDialog(
                         text = "Cancelar",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = CoralPastel
+                        color = MaterialTheme.colorScheme.secondary
                     )
                 }
             }

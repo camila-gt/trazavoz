@@ -1,5 +1,9 @@
 package com.trazavoz.ui.menu
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,11 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.trazavoz.ui.components.minTouchTarget
 import com.trazavoz.ui.theme.*
 import com.trazavoz.ui.tutor.PinValidationDialog
 
@@ -31,25 +35,20 @@ fun MenuScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showPinDialog by remember { mutableStateOf(false) }
 
-    val config = LocalConfiguration.current
-    val screenHeight = config.screenHeightDp.dp
-    val isCompact = screenHeight < 400.dp
+    val windowInfo = rememberWindowInfo()
+    val isCompact = windowInfo.isCompactHeight
 
     val alphabet = remember {
         ("ABCDEFGHIJKLMNÑOPQRSTUVWXYZ").map { it.toString() }
     }
 
-    val pastelColors = remember {
-        listOf(CoralPastel, CelestePastel, VerdeManzanaPastel, PurpuraSuave, AmarilloCrema)
-    }
-
-    val titleSize = if (isCompact) 24.sp else 36.sp
-    val tabFontSize = if (isCompact) 14.sp else 20.sp
-    val gridMinSize = if (isCompact) 65.dp else 85.dp
-    val cardSize = if (isCompact) 65.dp else 85.dp
-    val letterFontSize = if (isCompact) 22.sp else 32.sp
+    val titleSize = if (isCompact) 22.sp else if (windowInfo.isExpandedWidth) 40.sp else 28.sp
+    val tabFontSize = if (isCompact) 14.sp else if (windowInfo.isExpandedWidth) 20.sp else 16.sp
+    val gridMinSize = if (isCompact) 65.dp else if (windowInfo.isExpandedWidth) 100.dp else 80.dp
+    val cardSize = if (isCompact) 65.dp else if (windowInfo.isExpandedWidth) 100.dp else 80.dp
+    val letterFontSize = if (isCompact) 22.sp else if (windowInfo.isExpandedWidth) 32.sp else 26.sp
     val padding = if (isCompact) 8.dp else 16.dp
-    val tutorBtnHeight = if (isCompact) 40.dp else 60.dp
+    val tutorBtnHeight = if (isCompact) 48.dp else 56.dp
 
     Box(
         modifier = Modifier
@@ -76,14 +75,17 @@ fun MenuScreen(
 
                 Button(
                     onClick = { showPinDialog = true },
-                    modifier = Modifier.height(tutorBtnHeight),
-                    colors = ButtonDefaults.buttonColors(containerColor = PurpuraSuave)
+                    modifier = Modifier
+                        .height(tutorBtnHeight)
+                        .minTouchTarget(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text(
                         text = "Modo tutor",
                         fontSize = if (isCompact) 14.sp else 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -114,82 +116,88 @@ fun MenuScreen(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                if (selectedTab == 0) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = gridMinSize),
-                        horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(alphabet) { letter ->
-                            val colorIndex = alphabet.indexOf(letter) % pastelColors.size
-                            val color = pastelColors[colorIndex]
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "menu-tabs"
+                ) { tab ->
+                    if (tab == 0) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = gridMinSize),
+                            horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(alphabet) { letter ->
+                                val color = colorForLetter(letter.first())
 
-                            ElevatedCard(
-                                modifier = Modifier
-                                    .size(cardSize)
-                                    .clickable { onLetterClick(letter) },
-                                shape = MaterialTheme.shapes.medium,
-                                colors = CardDefaults.elevatedCardColors(containerColor = color)
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
+                                ElevatedCard(
+                                    modifier = Modifier
+                                        .size(cardSize)
+                                        .clickable { onLetterClick(letter) },
+                                    shape = MaterialTheme.shapes.medium,
+                                    colors = CardDefaults.elevatedCardColors(containerColor = color)
                                 ) {
-                                    Text(
-                                        text = letter,
-                                        fontSize = letterFontSize,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        textAlign = TextAlign.Center,
-                                        color = Color.Black
-                                    )
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = letter,
+                                            fontSize = letterFontSize,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            textAlign = TextAlign.Center,
+                                            color = MaterialTheme.colorScheme.onBackground
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-                } else {
-                    if (boards.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No hay tableros creados. Activa el modo tutor para agregar uno.",
-                                fontSize = if (isCompact) 16.sp else 20.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.Gray,
-                                textAlign = TextAlign.Center
-                            )
-                        }
                     } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            horizontalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(boards) { board ->
-                                ElevatedCard(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(if (isCompact) 70.dp else 110.dp)
-                                        .clickable { onBoardClick(board.id) },
-                                    shape = MaterialTheme.shapes.large,
-                                    colors = CardDefaults.elevatedCardColors(containerColor = AmarilloCrema)
-                                ) {
-                                    Column(
+                        if (boards.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No hay tableros creados. Activa el modo tutor para agregar uno.",
+                                    fontSize = if (isCompact) 16.sp else 20.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = if (isCompact) 150.dp else 180.dp),
+                                horizontalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(boards) { board ->
+                                    ElevatedCard(
                                         modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(if (isCompact) 8.dp else 16.dp),
-                                        verticalArrangement = Arrangement.Center,
-                                        horizontalAlignment = Alignment.CenterHorizontally
+                                            .fillMaxWidth()
+                                            .height(if (isCompact) 70.dp else 110.dp)
+                                            .clickable { onBoardClick(board.id) },
+                                        shape = MaterialTheme.shapes.large,
+                                        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                                     ) {
-                                        Text(
-                                            text = board.name,
-                                            fontSize = if (isCompact) 18.sp else 24.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.Black
-                                        )
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(if (isCompact) 8.dp else 16.dp),
+                                            verticalArrangement = Arrangement.Center,
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(
+                                                text = board.name,
+                                                fontSize = if (isCompact) 18.sp else 24.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
                                     }
                                 }
                             }

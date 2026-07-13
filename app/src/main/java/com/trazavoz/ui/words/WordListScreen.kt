@@ -1,7 +1,6 @@
 package com.trazavoz.ui.words
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -13,14 +12,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.trazavoz.ui.theme.CelestePastel
-import com.trazavoz.ui.theme.CoralPastel
+import com.trazavoz.ui.components.ScreenHeader
+import com.trazavoz.ui.theme.rememberWindowInfo
 import java.io.File
 
 @Composable
@@ -32,37 +30,24 @@ fun WordListScreen(
     onBackClick: () -> Unit
 ) {
     val words by viewModel.getWords(filterType, filterValue).collectAsState(initial = emptyList())
+    val windowInfo = rememberWindowInfo()
+    val isCompact = windowInfo.isCompactHeight
 
     val title = if (filterType == "letter") "Palabras con $filterValue" else "Mi Tablero"
+
+    val padding = if (isCompact) 8.dp else 16.dp
+    val gridMinSize = if (windowInfo.isExpandedWidth) 200.dp else if (isCompact) 130.dp else 160.dp
+    val cardHeight = if (isCompact) 130.dp else if (windowInfo.isExpandedWidth) 190.dp else 160.dp
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .padding(padding)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = onBackClick,
-                modifier = Modifier.size(width = 120.dp, height = 60.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
-            ) {
-                Text("Volver", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-            }
+        ScreenHeader(title = title, onBackClick = onBackClick, windowInfo = windowInfo)
 
-            Text(
-                text = title,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(if (isCompact) 8.dp else 16.dp))
 
         if (words.isEmpty()) {
             Box(
@@ -73,16 +58,16 @@ fun WordListScreen(
             ) {
                 Text(
                     text = "Aún no hay palabras agregadas en este grupo.",
-                    fontSize = 20.sp,
-                    color = Color.Gray,
+                    fontSize = if (isCompact) 16.sp else 20.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
             }
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 160.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                columns = GridCells.Adaptive(minSize = gridMinSize),
+                horizontalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
+                verticalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
@@ -91,7 +76,7 @@ fun WordListScreen(
                     ElevatedCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(160.dp)
+                            .height(cardHeight)
                             .clickable { onWordClick(word.id) },
                         shape = MaterialTheme.shapes.large
                     ) {
@@ -121,9 +106,9 @@ fun WordListScreen(
                             }
                             Text(
                                 text = word.text,
-                                fontSize = 18.sp,
+                                fontSize = if (isCompact) 16.sp else 18.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color.Black,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth()
                             )

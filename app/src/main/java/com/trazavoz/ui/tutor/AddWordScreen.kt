@@ -7,19 +7,23 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.trazavoz.domain.usecase.SearchResult
-import com.trazavoz.ui.theme.CelestePastel
-import com.trazavoz.ui.theme.CoralPastel
-import com.trazavoz.ui.theme.VerdeManzanaPastel
+import com.trazavoz.ui.components.ScreenHeader
+import com.trazavoz.ui.components.minTouchTarget
+import com.trazavoz.ui.theme.WindowInfo
+import com.trazavoz.ui.theme.rememberWindowInfo
 
 @Composable
 fun AddWordScreen(
@@ -35,6 +39,10 @@ fun AddWordScreen(
     var syllablesInput by remember { mutableStateOf("") }
     var statusMessage by remember { mutableStateOf("") }
 
+    val windowInfo = rememberWindowInfo()
+    val isCompact = windowInfo.isCompactHeight
+    val padding = if (isCompact) 8.dp else 16.dp
+
     DisposableEffect(Unit) {
         onDispose {
             viewModel.clearSearchResults()
@@ -45,30 +53,11 @@ fun AddWordScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .padding(padding)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = onBackClick,
-                modifier = Modifier.size(width = 120.dp, height = 60.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = CoralPastel)
-            ) {
-                Text("Volver", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-            }
+        ScreenHeader(title = "Buscar y añadir palabra", onBackClick = onBackClick, windowInfo = windowInfo)
 
-            Text(
-                text = "Buscar y añadir palabra",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(if (isCompact) 8.dp else 16.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -87,150 +76,210 @@ fun AddWordScreen(
                     selectedPic = null
                     viewModel.searchWord(searchQuery)
                 },
-                modifier = Modifier.height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = CelestePastel)
+                modifier = Modifier.height(56.dp).minTouchTarget(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("Buscar", color = Color.Black, fontWeight = FontWeight.Bold)
+                Text("Buscar", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(if (isCompact) 8.dp else 16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Box(
-                modifier = Modifier.weight(1f).fillMaxHeight()
+        val resultsPane: @Composable () -> Unit = {
+            SearchResultsPane(
+                isSearching = isSearching,
+                searchResults = searchResults,
+                selectedPic = selectedPic,
+                windowInfo = windowInfo,
+                onPicSelected = { pic ->
+                    selectedPic = pic
+                    wordText = pic.name
+                    syllablesInput = viewModel.getSuggestedSyllables(pic.name)
+                    statusMessage = ""
+                }
+            )
+        }
+
+        val formPane: @Composable () -> Unit = {
+            NewWordFormPane(
+                selectedPic = selectedPic,
+                wordText = wordText,
+                onWordTextChange = {
+                    wordText = it
+                    syllablesInput = viewModel.getSuggestedSyllables(it)
+                },
+                syllablesInput = syllablesInput,
+                onSyllablesChange = { syllablesInput = it },
+                statusMessage = statusMessage,
+                onSaveClick = {
+                    val pic = selectedPic ?: return@NewWordFormPane
+                    viewModel.addWord(
+                        text = wordText,
+                        arasaacId = pic.id,
+                        syllablesInput = syllablesInput,
+                        imageUrl = pic.imageUrl
+                    ) { success ->
+                        if (success) {
+                            statusMessage = "¡Palabra guardada con éxito!"
+                            selectedPic = null
+                        } else {
+                            statusMessage = "Error al guardar. Verifica los campos."
+                        }
+                    }
+                }
+            )
+        }
+
+        if (windowInfo.isExpandedWidth) {
+            Row(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (isSearching) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = CelestePastel)
-                    }
-                } else if (searchResults.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Escribe y busca para ver pictogramas.", color = Color.Gray)
-                    }
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(searchResults) { pic ->
-                            ElevatedCard(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(140.dp)
-                                    .clickable {
-                                        selectedPic = pic
-                                        wordText = pic.name
-                                        syllablesInput = viewModel.getSuggestedSyllables(pic.name)
-                                        statusMessage = ""
-                                    }
-                                    .border(
-                                        width = if (selectedPic?.id == pic.id) 3.dp else 0.dp,
-                                        color = if (selectedPic?.id == pic.id) CelestePastel else Color.Transparent,
-                                        shape = MaterialTheme.shapes.large
-                                    ),
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) { resultsPane() }
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) { formPane() }
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) { resultsPane() }
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) { formPane() }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchResultsPane(
+    isSearching: Boolean,
+    searchResults: List<SearchResult>,
+    selectedPic: SearchResult?,
+    windowInfo: WindowInfo,
+    onPicSelected: (SearchResult) -> Unit
+) {
+    when {
+        isSearching -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        searchResults.isEmpty() -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Escribe y busca para ver pictogramas.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        else -> {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = if (windowInfo.isCompactHeight) 120.dp else 150.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(searchResults) { pic ->
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                            .clickable { onPicSelected(pic) }
+                            .border(
+                                width = if (selectedPic?.id == pic.id) 3.dp else 0.dp,
+                                color = if (selectedPic?.id == pic.id) MaterialTheme.colorScheme.primary else Color.Transparent,
                                 shape = MaterialTheme.shapes.large
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(8.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    AsyncImage(
-                                        model = pic.imageUrl,
-                                        contentDescription = pic.name,
-                                        modifier = Modifier.weight(1f).fillMaxWidth()
-                                    )
-                                    Text(pic.name, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                                }
-                            }
+                            ),
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            AsyncImage(
+                                model = pic.imageUrl,
+                                contentDescription = pic.name,
+                                modifier = Modifier.weight(1f).fillMaxWidth()
+                            )
+                            Text(pic.name, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                         }
                     }
                 }
             }
+        }
+    }
+}
 
-            Box(
+@Composable
+private fun NewWordFormPane(
+    selectedPic: SearchResult?,
+    wordText: String,
+    onWordTextChange: (String) -> Unit,
+    syllablesInput: String,
+    onSyllablesChange: (String) -> Unit,
+    statusMessage: String,
+    onSaveClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large)
+            .padding(16.dp)
+    ) {
+        if (selectedPic == null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    "Selecciona un pictograma para continuar",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .border(2.dp, Color.LightGray, MaterialTheme.shapes.large)
-                    .padding(16.dp)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val pic = selectedPic
-                if (pic == null) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Selecciona un pictograma de la izquierda para continuar", color = Color.Gray, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Guardar nueva palabra", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("Guardar nueva palabra", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
 
-                        AsyncImage(
-                            model = pic.imageUrl,
-                            contentDescription = pic.name,
-                            modifier = Modifier.size(120.dp)
-                        )
+                AsyncImage(
+                    model = selectedPic.imageUrl,
+                    contentDescription = selectedPic.name,
+                    modifier = Modifier.size(120.dp)
+                )
 
-                        OutlinedTextField(
-                            value = wordText,
-                            onValueChange = {
-                                wordText = it
-                                syllablesInput = viewModel.getSuggestedSyllables(it)
-                            },
-                            label = { Text("Texto de la palabra") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                OutlinedTextField(
+                    value = wordText,
+                    onValueChange = onWordTextChange,
+                    label = { Text("Texto de la palabra") },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                        Text(
-                            text = "Puedes cambiar el nombre si la traducción no es correcta para tu región",
-                            fontSize = 12.sp,
-                            color = Color.Gray
-                        )
+                Text(
+                    text = "Puedes cambiar el nombre si la traducción no es correcta para tu región",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
-                        OutlinedTextField(
-                            value = syllablesInput,
-                            onValueChange = { syllablesInput = it },
-                            label = { Text("Sílabas (separadas por guiones, ej: ME-SA)") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                OutlinedTextField(
+                    value = syllablesInput,
+                    onValueChange = onSyllablesChange,
+                    label = { Text("Sílabas (separadas por guiones, ej: ME-SA)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                        Button(
-                            onClick = {
-                                viewModel.addWord(
-                                    text = wordText,
-                                    arasaacId = pic.id,
-                                    syllablesInput = syllablesInput,
-                                    imageUrl = pic.imageUrl
-                                ) { success ->
-                                    if (success) {
-                                        statusMessage = "¡Palabra guardada con éxito!"
-                                        selectedPic = null
-                                    } else {
-                                        statusMessage = "Error al guardar. Verifica los campos."
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = VerdeManzanaPastel)
-                        ) {
-                            Text("Guardar en biblioteca", color = Color.Black, fontWeight = FontWeight.Bold)
-                        }
+                Button(
+                    onClick = onSaveClick,
+                    modifier = Modifier.fillMaxWidth().height(56.dp).minTouchTarget(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                ) {
+                    Text("Guardar en biblioteca", color = MaterialTheme.colorScheme.onTertiary, fontWeight = FontWeight.Bold)
+                }
 
-                        if (statusMessage.isNotEmpty()) {
-                            Text(statusMessage, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
-                        }
-                    }
+                if (statusMessage.isNotEmpty()) {
+                    Text(statusMessage, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                 }
             }
         }

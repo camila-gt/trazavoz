@@ -8,18 +8,18 @@
         android:name=".TrazavozApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="Trazavoz"
         android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="Trazavoz"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.NoTitleBar"
+        android:theme="@style/Theme.Trazavoz"
         android:usesCleartextTraffic="true">
         
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
-            android:screenOrientation="landscape"
+            android:screenOrientation="fullSensor"
             android:configChanges="orientation|screenSize|keyboardHidden"
-            android:theme="@android:style/Theme.NoTitleBar">
+            android:theme="@style/Theme.Trazavoz">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

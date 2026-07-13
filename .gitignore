@@ -12,5 +12,4 @@
 .cxx
 local.properties
 
-# Excluir carpeta de documentación según instrucción del usuario
 Docs/

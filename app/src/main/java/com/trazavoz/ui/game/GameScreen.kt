@@ -37,6 +37,7 @@ import com.trazavoz.ui.audio.TrazavozTtsManager
 import com.trazavoz.ui.components.DragAndDropContainer
 import com.trazavoz.ui.components.DragAndDropState
 import com.trazavoz.ui.components.LocalDragAndDropState
+import com.trazavoz.ui.components.LockLandscapeOrientation
 import com.trazavoz.ui.components.ScreenHeader
 import com.trazavoz.ui.theme.colorForLetter
 import com.trazavoz.ui.theme.rememberWindowInfo
@@ -52,6 +53,8 @@ fun GameScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    LockLandscapeOrientation()
 
     val windowInfo = rememberWindowInfo()
     val screenHeight = windowInfo.screenHeightDp

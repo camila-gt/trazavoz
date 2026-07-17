@@ -103,6 +103,9 @@ class SyllablePracticeViewModel @Inject constructor(
         val childSlots = _uiState.value.childSlots
         if (childSlots.any { it.syllable == null }) return
 
+        // Solo se celebra si TODAS las sílabas del niño son correctas (verde).
+        if (childSlots.any { it.validation != SlotValidation.CORRECT }) return
+
         val silabas = childSlots.mapNotNull { it.syllable }
         val palabra = silabas.joinToString("").lowercase()
         ttsManager.hablarSecuencia(silabas + palabra)

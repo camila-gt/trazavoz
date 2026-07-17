@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -131,8 +135,15 @@ fun SyllablePracticeScreen(
                         modifier = Modifier.height(controlHeight),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
                     ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiary,
+                            modifier = Modifier.size(if (isCompact) 18.dp else 22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "🔊 palabra",
+                            text = "Palabra",
                             fontSize = if (isCompact) 14.sp else 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onTertiary
@@ -199,7 +210,12 @@ fun SyllablePracticeScreen(
                         contentPadding = PaddingValues(0.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text(text = "🎲", fontSize = if (isCompact) 18.sp else 22.sp)
+                        Icon(
+                            imageVector = Icons.Filled.Casino,
+                            contentDescription = "Palabra aleatoria",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(if (isCompact) 20.dp else 24.dp)
+                        )
                     }
                     Button(
                         onClick = { viewModel.onClearAll() },
@@ -209,7 +225,12 @@ fun SyllablePracticeScreen(
                         contentPadding = PaddingValues(0.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {
-                        Text(text = "🔄", fontSize = if (isCompact) 18.sp else 22.sp)
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Limpiar todo",
+                            tint = MaterialTheme.colorScheme.onSecondary,
+                            modifier = Modifier.size(if (isCompact) 20.dp else 24.dp)
+                        )
                     }
                 }
             }
@@ -255,15 +276,31 @@ fun SyllablePracticeScreen(
             LaunchedEffect(Unit) {
                 entrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy))
             }
-            Box(
+            val starSize = if (isCompact) 48.dp else 72.dp
+            Row(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .scale(entrance.value)
+                    .scale(entrance.value),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "⭐🎉⭐",
-                    fontSize = if (isCompact) 48.sp else 72.sp,
-                    textAlign = TextAlign.Center
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(starSize * 0.8f)
+                )
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = "¡Muy bien!",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(starSize)
+                )
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(starSize * 0.8f)
                 )
             }
         }

@@ -33,11 +33,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.trazavoz.ui.components.LocalDragAndDropState
 import com.trazavoz.ui.components.DragAndDropContainer
+import com.trazavoz.ui.components.LocalDragAndDropState
 import com.trazavoz.ui.theme.AmarilloCrema
 import com.trazavoz.ui.theme.CelestePastel
 import com.trazavoz.ui.theme.CoralPastel
@@ -58,26 +57,14 @@ fun SyllablePracticeScreen(
     val windowInfo = rememberWindowInfo()
     val isCompact = windowInfo.isCompactHeight
 
+    // Solo los controles (tamaños de toque) usan dp fijos; el contenido
+    // (recuadros y sílabas) se dimensiona por fracción del espacio disponible.
     val padding = if (isCompact) 8.dp else 16.dp
-    // Los recuadros se ajustan al ancho disponible con weight (ver más abajo);
-    // solo el alto y la tipografía dependen de la orientación/tamaño.
-    val slotHeight = when {
-        windowInfo.isExpandedWidth -> 150.dp
-        windowInfo.isLandscape -> 110.dp
-        isCompact -> 96.dp
-        else -> 128.dp
-    }
-    val slotFontSize = when {
-        windowInfo.isExpandedWidth -> 46.sp
-        windowInfo.isLandscape -> 38.sp
-        isCompact -> 30.sp
-        else -> 42.sp
-    }
-    val childGap = if (isCompact) 20.dp else 32.dp
     val ghostWidth = if (isCompact) 96.dp else 120.dp
     val bankTileHeight = if (isCompact) 44.dp else 58.dp
-    val bankFontSize = if (isCompact) 16.sp else 22.sp
     val controlHeight = if (isCompact) 44.dp else 52.dp
+    val controlIconSize = if (isCompact) 20.dp else 24.dp
+    val backButtonSize = if (isCompact) 44.dp else 52.dp
 
     LaunchedEffect(letter) {
         viewModel.init(letter)
@@ -88,144 +75,109 @@ fun SyllablePracticeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) { dragState ->
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            horizontalArrangement = Arrangement.spacedBy(padding)
-        ) {
-            // Región izquierda: filas tutor (arriba) y niño (abajo)
-            Column(
+        if (windowInfo.isLandscape) {
+            // Horizontal: tutor/niño apilados a la izquierda, banco vertical a la derecha.
+            Row(
                 modifier = Modifier
-                    .weight(0.68f)
-                    .fillMaxHeight()
-            ) {
-                FilledIconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier.size(if (isCompact) 44.dp else 52.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.onSecondary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver"
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Fila superior (Tutor): dos cajas contiguas. Tocar la palabra
-                // completa la pronuncia entera.
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(MaterialTheme.shapes.medium)
-                        .clickable { viewModel.speakTutorWord() },
-                    horizontalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    uiState.tutorSlots.forEach { slot ->
-                        SyllableSlotComposable(
-                            slot = slot,
-                            modifier = Modifier.weight(1f),
-                            height = slotHeight,
-                            fontSize = slotFontSize,
-                            onTap = null
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1.4f))
-
-                // Fila inferior (Niño): dos cajas separadas con borde punteado.
-                // Cada sílaba colocada es clickeable para volver a oírla.
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(childGap)
-                ) {
-                    uiState.childSlots.forEach { slot ->
-                        SyllableSlotComposable(
-                            slot = slot,
-                            modifier = Modifier.weight(1f),
-                            height = slotHeight,
-                            fontSize = slotFontSize,
-                            onTap = { viewModel.onChildSlotTap(slot.index) }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1.2f))
-            }
-
-            // Región derecha: banco de sílabas (arriba) + controles (abajo)
-            Column(
-                modifier = Modifier
-                    .weight(0.32f)
-                    .fillMaxHeight()
-                    .clip(MaterialTheme.shapes.large)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(2.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large)
-                    .padding(if (isCompact) 6.dp else 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .padding(padding),
+                horizontalArrangement = Arrangement.spacedBy(padding)
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    verticalArrangement = Arrangement.SpaceEvenly
+                        .weight(0.66f)
+                        .fillMaxHeight()
                 ) {
-                    uiState.bank.forEach { tile ->
-                        DraggableSyllableComposable(
-                            tile = tile,
-                            height = bankTileHeight,
-                            fontSize = bankFontSize,
-                            onDropped = { targetId -> routeDrop(targetId, tile.syllable, viewModel) }
+                    BackButton(onBackClick, backButtonSize)
+                    WordSection(weightModifier = Modifier.weight(1f)) {
+                        TutorWord(
+                            slots = uiState.tutorSlots,
+                            onSpeakWord = viewModel::speakTutorWord,
+                            modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.55f)
+                        )
+                    }
+                    WordSection(weightModifier = Modifier.weight(1f)) {
+                        ChildWord(
+                            slots = uiState.childSlots,
+                            onTapSyllable = viewModel::onChildSlotTap,
+                            modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.55f)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 10.dp))
+                BankPanel(modifier = Modifier.weight(0.34f).fillMaxHeight(), inset = isCompact) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        verticalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        uiState.bank.forEach { tile ->
+                            DraggableSyllableComposable(
+                                tile = tile,
+                                modifier = Modifier.fillMaxWidth().height(bankTileHeight),
+                                onDropped = { targetId -> routeDrop(targetId, tile.syllable, viewModel) }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 10.dp))
+                    ControlButtons(
+                        onRandom = viewModel::onRandom,
+                        onClear = viewModel::onClearAll,
+                        height = controlHeight,
+                        iconSize = controlIconSize,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        } else {
+            // Vertical: palabra del tutor, palabra del niño y banco horizontal abajo.
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                BackButton(onBackClick, backButtonSize)
+                WordSection(weightModifier = Modifier.weight(1f)) {
+                    TutorWord(
+                        slots = uiState.tutorSlots,
+                        onSpeakWord = viewModel::speakTutorWord,
+                        modifier = Modifier.fillMaxWidth(0.7f).fillMaxHeight(0.55f)
+                    )
+                }
+                WordSection(weightModifier = Modifier.weight(1f)) {
+                    ChildWord(
+                        slots = uiState.childSlots,
+                        onTapSyllable = viewModel::onChildSlotTap,
+                        modifier = Modifier.fillMaxWidth(0.7f).fillMaxHeight(0.55f)
+                    )
+                }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = { viewModel.onRandom() },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(controlHeight),
-                        contentPadding = PaddingValues(0.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                BankPanel(modifier = Modifier.fillMaxWidth().weight(1.1f), inset = isCompact) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Casino,
-                            contentDescription = "Palabra aleatoria",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(if (isCompact) 20.dp else 24.dp)
-                        )
+                        uiState.bank.forEach { tile ->
+                            DraggableSyllableComposable(
+                                tile = tile,
+                                modifier = Modifier.weight(1f).fillMaxHeight(0.72f),
+                                onDropped = { targetId -> routeDrop(targetId, tile.syllable, viewModel) }
+                            )
+                        }
                     }
-                    Button(
-                        onClick = { viewModel.onClearAll() },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(controlHeight),
-                        contentPadding = PaddingValues(0.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Refresh,
-                            contentDescription = "Limpiar todo",
-                            tint = MaterialTheme.colorScheme.onSecondary,
-                            modifier = Modifier.size(if (isCompact) 20.dp else 24.dp)
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 10.dp))
+                    ControlButtons(
+                        onRandom = viewModel::onRandom,
+                        onClear = viewModel::onClearAll,
+                        height = controlHeight,
+                        iconSize = controlIconSize,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
 
-        // Sílaba "fantasma" que sigue al dedo mientras se arrastra
+        // Sílaba "fantasma" que sigue al dedo mientras se arrastra.
         if (dragState.isDragging && dragState.dragItem is SyllableTile) {
             val tile = dragState.dragItem as SyllableTile
             val density = LocalDensity.current
@@ -251,7 +203,7 @@ fun SyllablePracticeScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = tile.syllable,
-                        fontSize = bankFontSize,
+                        fontSize = (bankTileHeight.value * 0.4f).sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
@@ -259,9 +211,143 @@ fun SyllablePracticeScreen(
             }
         }
 
-        // Celebración superpuesta y NO bloqueante (el Canvas no captura toques)
+        // Celebración superpuesta y NO bloqueante (el Canvas no captura toques).
         if (uiState.showCelebration) {
             ConfettiOverlay(modifier = Modifier.fillMaxSize())
+        }
+    }
+}
+
+/** Sección vertical que centra una palabra (tutor o niño) y le reserva su propio espacio. */
+@Composable
+private fun ColumnScope.WordSection(
+    weightModifier: Modifier,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = weightModifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
+/** Contenedor con fondo y borde que agrupa el banco de sílabas y los controles. */
+@Composable
+private fun BankPanel(
+    modifier: Modifier,
+    inset: Boolean,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = modifier
+            .clip(MaterialTheme.shapes.large)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large)
+            .padding(if (inset) 6.dp else 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        content = content
+    )
+}
+
+@Composable
+private fun BackButton(onClick: () -> Unit, size: Dp) {
+    FilledIconButton(
+        onClick = onClick,
+        modifier = Modifier.size(size),
+        colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.secondary,
+            contentColor = MaterialTheme.colorScheme.onSecondary
+        )
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = "Volver"
+        )
+    }
+}
+
+/** Palabra del tutor: dos cajas contiguas; tocarla la pronuncia completa. */
+@Composable
+private fun TutorWord(
+    slots: List<SyllableSlot>,
+    onSpeakWord: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onSpeakWord() },
+        horizontalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        slots.forEach { slot ->
+            SyllableSlotComposable(
+                slot = slot,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                onTap = null
+            )
+        }
+    }
+}
+
+/** Palabra del niño: dos cajas separadas con borde punteado; cada sílaba suena al tocarla. */
+@Composable
+private fun ChildWord(
+    slots: List<SyllableSlot>,
+    onTapSyllable: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        slots.forEach { slot ->
+            SyllableSlotComposable(
+                slot = slot,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                onTap = { onTapSyllable(slot.index) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ControlButtons(
+    onRandom: () -> Unit,
+    onClear: () -> Unit,
+    height: Dp,
+    iconSize: Dp,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Button(
+            onClick = onRandom,
+            modifier = Modifier.weight(1f).height(height),
+            contentPadding = PaddingValues(0.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Casino,
+                contentDescription = "Palabra aleatoria",
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+        Button(
+            onClick = onClear,
+            modifier = Modifier.weight(1f).height(height),
+            contentPadding = PaddingValues(0.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = "Limpiar todo",
+                tint = MaterialTheme.colorScheme.onSecondary,
+                modifier = Modifier.size(iconSize)
+            )
         }
     }
 }
@@ -362,8 +448,6 @@ private fun routeDrop(targetId: String, syllable: String, viewModel: SyllablePra
 private fun SyllableSlotComposable(
     slot: SyllableSlot,
     modifier: Modifier = Modifier,
-    height: Dp,
-    fontSize: TextUnit,
     onTap: (() -> Unit)?
 ) {
     val dragAndDropState = LocalDragAndDropState.current
@@ -390,9 +474,8 @@ private fun SyllableSlotComposable(
         Modifier.border(width = 3.dp, color = outline, shape = shape)
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
-            .height(height)
             .onGloballyPositioned {
                 dragAndDropState.registerTarget(slot.id, it.boundsInWindow())
             }
@@ -402,10 +485,13 @@ private fun SyllableSlotComposable(
             .then(if (onTap != null) Modifier.clickable { onTap() } else Modifier),
         contentAlignment = Alignment.Center
     ) {
+        // La tipografía se adapta al tamaño del recuadro (responsive por construcción).
+        val fontSize = (maxHeight.value * 0.42f).coerceAtMost(64f).sp
         Text(
             text = slot.syllable ?: "",
             fontSize = fontSize,
             fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
             color = MaterialTheme.colorScheme.onBackground
         )
     }
@@ -414,17 +500,14 @@ private fun SyllableSlotComposable(
 @Composable
 private fun DraggableSyllableComposable(
     tile: SyllableTile,
-    height: Dp,
-    fontSize: TextUnit,
+    modifier: Modifier = Modifier,
     onDropped: (String) -> Unit
 ) {
     val dragAndDropState = LocalDragAndDropState.current
     var positionInWindow by remember { mutableStateOf(Offset.Zero) }
 
     ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(height)
+        modifier = modifier
             .onGloballyPositioned {
                 positionInWindow = it.boundsInWindow().center
             }
@@ -450,11 +533,13 @@ private fun DraggableSyllableComposable(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.elevatedCardColors(containerColor = colorForLetter(tile.syllable.first()))
     ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            val fontSize = (maxHeight.value * 0.4f).coerceAtMost(28f).sp
             Text(
                 text = tile.syllable,
                 fontSize = fontSize,
                 fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )

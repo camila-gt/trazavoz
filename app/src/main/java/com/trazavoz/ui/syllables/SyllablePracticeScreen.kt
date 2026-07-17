@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -60,23 +59,22 @@ fun SyllablePracticeScreen(
     val isCompact = windowInfo.isCompactHeight
 
     val padding = if (isCompact) 8.dp else 16.dp
-    val slotWidth = when {
-        windowInfo.isExpandedWidth -> 180.dp
-        windowInfo.isLandscape -> 150.dp
-        else -> 140.dp
-    }
+    // Los recuadros se ajustan al ancho disponible con weight (ver más abajo);
+    // solo el alto y la tipografía dependen de la orientación/tamaño.
     val slotHeight = when {
         windowInfo.isExpandedWidth -> 150.dp
-        windowInfo.isLandscape -> 104.dp
-        isCompact -> 92.dp
-        else -> 120.dp
+        windowInfo.isLandscape -> 110.dp
+        isCompact -> 96.dp
+        else -> 128.dp
     }
     val slotFontSize = when {
         windowInfo.isExpandedWidth -> 46.sp
         windowInfo.isLandscape -> 38.sp
         isCompact -> 30.sp
-        else -> 40.sp
+        else -> 42.sp
     }
+    val childGap = if (isCompact) 20.dp else 32.dp
+    val ghostWidth = if (isCompact) 96.dp else 120.dp
     val bankTileHeight = if (isCompact) 44.dp else 58.dp
     val bankFontSize = if (isCompact) 16.sp else 22.sp
     val controlHeight = if (isCompact) 44.dp else 52.dp
@@ -116,51 +114,21 @@ fun SyllablePracticeScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(0.25f))
-
-                // Fila superior (Tutor): dos cajas contiguas + botón para oír la palabra
-                Column(horizontalAlignment = Alignment.Start) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-                        uiState.tutorSlots.forEach { slot ->
-                            SyllableSlotComposable(
-                                slot = slot,
-                                width = slotWidth,
-                                height = slotHeight,
-                                fontSize = slotFontSize,
-                                onTap = { viewModel.onTutorSlotTap(slot.index) }
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = { viewModel.speakTutorWord() },
-                        modifier = Modifier.height(controlHeight),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiary,
-                            modifier = Modifier.size(if (isCompact) 18.dp else 22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Palabra",
-                            fontSize = if (isCompact) 14.sp else 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onTertiary
-                        )
-                    }
-                }
-
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Fila inferior (Niño): dos cajas separadas con borde punteado
-                Row(horizontalArrangement = Arrangement.spacedBy(if (isCompact) 24.dp else 48.dp)) {
-                    uiState.childSlots.forEach { slot ->
+                // Fila superior (Tutor): dos cajas contiguas. Tocar la palabra
+                // completa la pronuncia entera.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable { viewModel.speakTutorWord() },
+                    horizontalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    uiState.tutorSlots.forEach { slot ->
                         SyllableSlotComposable(
                             slot = slot,
-                            width = slotWidth,
+                            modifier = Modifier.weight(1f),
                             height = slotHeight,
                             fontSize = slotFontSize,
                             onTap = null
@@ -168,7 +136,26 @@ fun SyllablePracticeScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(0.5f))
+                Spacer(modifier = Modifier.weight(1.4f))
+
+                // Fila inferior (Niño): dos cajas separadas con borde punteado.
+                // Cada sílaba colocada es clickeable para volver a oírla.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(childGap)
+                ) {
+                    uiState.childSlots.forEach { slot ->
+                        SyllableSlotComposable(
+                            slot = slot,
+                            modifier = Modifier.weight(1f),
+                            height = slotHeight,
+                            fontSize = slotFontSize,
+                            onTap = { viewModel.onChildSlotTap(slot.index) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1.2f))
             }
 
             // Región derecha: banco de sílabas (arriba) + controles (abajo)
@@ -243,12 +230,12 @@ fun SyllablePracticeScreen(
             val tile = dragState.dragItem as SyllableTile
             val density = LocalDensity.current
             val localPos = dragState.currentDragLocalPosition
-            val halfW = with(density) { slotWidth.toPx() / 2f }
+            val halfW = with(density) { ghostWidth.toPx() / 2f }
             val halfH = with(density) { bankTileHeight.toPx() / 2f }
 
             ElevatedCard(
                 modifier = Modifier
-                    .size(width = slotWidth, height = bankTileHeight)
+                    .size(width = ghostWidth, height = bankTileHeight)
                     .offset {
                         IntOffset(
                             (localPos.x - halfW).roundToInt(),
@@ -374,7 +361,7 @@ private fun routeDrop(targetId: String, syllable: String, viewModel: SyllablePra
 @Composable
 private fun SyllableSlotComposable(
     slot: SyllableSlot,
-    width: Dp,
+    modifier: Modifier = Modifier,
     height: Dp,
     fontSize: TextUnit,
     onTap: (() -> Unit)?
@@ -404,8 +391,8 @@ private fun SyllableSlotComposable(
     }
 
     Box(
-        modifier = Modifier
-            .size(width = width, height = height)
+        modifier = modifier
+            .height(height)
             .onGloballyPositioned {
                 dragAndDropState.registerTarget(slot.id, it.boundsInWindow())
             }

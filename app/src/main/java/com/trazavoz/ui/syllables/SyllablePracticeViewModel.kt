@@ -64,9 +64,9 @@ class SyllablePracticeViewModel @Inject constructor(
         checkChildCompletion()
     }
 
-    /** Al tocar un hueco del tutor con sílaba, la vuelve a pronunciar. */
-    fun onTutorSlotTap(index: Int) {
-        _uiState.value.tutorSlots.getOrNull(index)?.syllable?.let { ttsManager.hablarSilaba(it) }
+    /** Al tocar una sílaba que colocó el niño, la vuelve a pronunciar. */
+    fun onChildSlotTap(index: Int) {
+        _uiState.value.childSlots.getOrNull(index)?.syllable?.let { ttsManager.hablarSilaba(it) }
     }
 
     /** Lee la palabra completa formada por la fila del tutor (si está llena). */

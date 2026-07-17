@@ -44,6 +44,19 @@ class TrazavozTtsManager @Inject constructor(
         tts?.speak(letra.toString(), TextToSpeech.QUEUE_FLUSH, null, "letra_$letra")
     }
 
+    /**
+     * Pronuncia varias partes en orden sin que se pisen entre sí: la primera
+     * corta lo que hubiera sonando (QUEUE_FLUSH) y las siguientes se encolan
+     * (QUEUE_ADD). Útil para leer sílaba1, sílaba2 y luego la palabra completa.
+     */
+    fun hablarSecuencia(partes: List<String>) {
+        if (!isInitialized) return
+        partes.forEachIndexed { index, parte ->
+            val modo = if (index == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+            tts?.speak(parte, modo, null, "seq_${index}_$parte")
+        }
+    }
+
     fun shutdown() {
         tts?.stop()
         tts?.shutdown()

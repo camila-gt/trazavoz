@@ -11,6 +11,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,8 +36,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.trazavoz.ui.audio.TrazavozTtsManager
+import com.trazavoz.ui.components.ConfettiOverlay
 import com.trazavoz.ui.components.DragAndDropContainer
 import com.trazavoz.ui.components.DragAndDropState
 import com.trazavoz.ui.components.LocalDragAndDropState
@@ -396,10 +402,10 @@ fun CelebrationDialog(
 ) {
     val windowInfo = rememberWindowInfo()
     val isCompact = windowInfo.isCompactHeight
-    val starsSize = when {
-        isCompact -> 26.sp
-        windowInfo.isExpandedWidth -> 44.sp
-        else -> 34.sp
+    val starIconSize = when {
+        isCompact -> 26.dp
+        windowInfo.isExpandedWidth -> 44.dp
+        else -> 34.dp
     }
     val dialogTitleSize = when {
         isCompact -> 18.sp
@@ -411,12 +417,8 @@ fun CelebrationDialog(
         windowInfo.isExpandedWidth -> 18.sp
         else -> 15.sp
     }
-    val dialogButtonTextSize = when {
-        isCompact -> 13.sp
-        windowInfo.isExpandedWidth -> 17.sp
-        else -> 14.sp
-    }
-    val dialogButtonHeight = if (isCompact) 44.dp else 52.dp
+    val actionButtonSize = if (isCompact) 56.dp else 64.dp
+    val actionIconSize = if (isCompact) 26.dp else 30.dp
 
     val entrance = remember { Animatable(0.85f) }
     LaunchedEffect(Unit) {
@@ -424,77 +426,92 @@ fun CelebrationDialog(
     }
 
     Dialog(
-        onDismissRequest = {}
+        onDismissRequest = {},
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        ElevatedCard(
-            modifier = Modifier
-                .fillMaxWidth(if (isCompact) 0.85f else 0.92f)
-                .padding(if (isCompact) 8.dp else 16.dp)
-                .scale(entrance.value)
-                .alpha(entrance.value),
-            shape = MaterialTheme.shapes.extraLarge
-        ) {
-            Column(
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            // Confetti cayendo sobre toda la pantalla, detrás de la tarjeta.
+            ConfettiOverlay(modifier = Modifier.fillMaxSize())
+
+            ElevatedCard(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(if (isCompact) 12.dp else 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .fillMaxWidth(if (isCompact) 0.6f else 0.5f)
+                    .widthIn(max = 520.dp)
+                    .padding(if (isCompact) 8.dp else 16.dp)
+                    .scale(entrance.value)
+                    .alpha(entrance.value),
+                shape = MaterialTheme.shapes.extraLarge
             ) {
-                Text(
-                    text = "⭐⭐⭐",
-                    fontSize = starsSize,
-                    modifier = Modifier.padding(bottom = if (isCompact) 8.dp else 16.dp)
-                )
-
-                Text(
-                    text = "¡Excelente trabajo!",
-                    fontSize = dialogTitleSize,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(if (isCompact) 4.dp else 8.dp))
-
-                Text(
-                    text = "Armaste la palabra: $wordText",
-                    fontSize = dialogSubtitleSize,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(if (isCompact) 12.dp else 24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(if (isCompact) 12.dp else 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Button(
-                        onClick = onReplayClick,
-                        modifier = Modifier.height(dialogButtonHeight),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = if (isCompact) 8.dp else 16.dp)
                     ) {
-                        Text(
-                            text = "Jugar de nuevo",
-                            fontSize = dialogButtonTextSize,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
+                        Icon(Icons.Filled.Star, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(starIconSize))
+                        Icon(Icons.Filled.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(starIconSize * 1.25f))
+                        Icon(Icons.Filled.Star, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(starIconSize))
                     }
 
-                    Button(
-                        onClick = onBackClick,
-                        modifier = Modifier.height(dialogButtonHeight),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    Text(
+                        text = "¡Excelente trabajo!",
+                        fontSize = dialogTitleSize,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(if (isCompact) 4.dp else 8.dp))
+
+                    Text(
+                        text = "Armaste la palabra: $wordText",
+                        fontSize = dialogSubtitleSize,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(if (isCompact) 12.dp else 24.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        Text(
-                            text = "Salir al menú",
-                            fontSize = dialogButtonTextSize,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
+                        FilledIconButton(
+                            onClick = onReplayClick,
+                            modifier = Modifier.size(actionButtonSize),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Replay,
+                                contentDescription = "Jugar de nuevo",
+                                modifier = Modifier.size(actionIconSize)
+                            )
+                        }
+
+                        FilledIconButton(
+                            onClick = onBackClick,
+                            modifier = Modifier.size(actionButtonSize),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary,
+                                contentColor = MaterialTheme.colorScheme.onSecondary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Home,
+                                contentDescription = "Salir al menú",
+                                modifier = Modifier.size(actionIconSize)
+                            )
+                        }
                     }
                 }
             }

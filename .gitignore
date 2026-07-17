@@ -13,3 +13,8 @@
 local.properties
 
 Docs/
+
+# Firma de release: nunca debe subirse al repo
+*.jks
+*.keystore
+keystore.properties

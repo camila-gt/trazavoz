@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.trazavoz.ui.components.DragAndDropContainer
 import com.trazavoz.ui.components.LocalDragAndDropState
+import com.trazavoz.ui.components.LockLandscapeOrientation
 import com.trazavoz.ui.theme.AmarilloCrema
 import com.trazavoz.ui.theme.CelestePastel
 import com.trazavoz.ui.theme.CoralPastel
@@ -54,6 +55,11 @@ fun SyllablePracticeScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Esta actividad siempre va en horizontal: da el ancho necesario para las
+    // dos palabras y el banco sin que los recuadros queden diminutos.
+    LockLandscapeOrientation()
+
     val windowInfo = rememberWindowInfo()
     val isCompact = windowInfo.isCompactHeight
 
@@ -75,105 +81,57 @@ fun SyllablePracticeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) { dragState ->
-        if (windowInfo.isLandscape) {
-            // Horizontal: tutor/niño apilados a la izquierda, banco vertical a la derecha.
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                horizontalArrangement = Arrangement.spacedBy(padding)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .weight(0.66f)
-                        .fillMaxHeight()
-                ) {
-                    BackButton(onBackClick, backButtonSize)
-                    WordSection(weightModifier = Modifier.weight(1f)) {
-                        TutorWord(
-                            slots = uiState.tutorSlots,
-                            onSpeakWord = viewModel::speakTutorWord,
-                            modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.55f)
-                        )
-                    }
-                    WordSection(weightModifier = Modifier.weight(1f)) {
-                        ChildWord(
-                            slots = uiState.childSlots,
-                            onTapSyllable = viewModel::onChildSlotTap,
-                            modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.55f)
-                        )
-                    }
-                }
-
-                BankPanel(modifier = Modifier.weight(0.34f).fillMaxHeight(), inset = isCompact) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        verticalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        uiState.bank.forEach { tile ->
-                            DraggableSyllableComposable(
-                                tile = tile,
-                                modifier = Modifier.fillMaxWidth().height(bankTileHeight),
-                                onDropped = { targetId -> routeDrop(targetId, tile.syllable, viewModel) }
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 10.dp))
-                    ControlButtons(
-                        onRandom = viewModel::onRandom,
-                        onClear = viewModel::onClearAll,
-                        height = controlHeight,
-                        iconSize = controlIconSize,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        } else {
-            // Vertical: palabra del tutor, palabra del niño y banco horizontal abajo.
+        // La pantalla está bloqueada en horizontal: tutor/niño apilados a la
+        // izquierda y banco vertical a la derecha.
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            horizontalArrangement = Arrangement.spacedBy(padding)
+        ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
+                    .weight(0.66f)
+                    .fillMaxHeight()
             ) {
                 BackButton(onBackClick, backButtonSize)
                 WordSection(weightModifier = Modifier.weight(1f)) {
                     TutorWord(
                         slots = uiState.tutorSlots,
                         onSpeakWord = viewModel::speakTutorWord,
-                        modifier = Modifier.fillMaxWidth(0.7f).fillMaxHeight(0.55f)
+                        modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.55f)
                     )
                 }
                 WordSection(weightModifier = Modifier.weight(1f)) {
                     ChildWord(
                         slots = uiState.childSlots,
                         onTapSyllable = viewModel::onChildSlotTap,
-                        modifier = Modifier.fillMaxWidth(0.7f).fillMaxHeight(0.55f)
+                        modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.55f)
                     )
                 }
+            }
 
-                BankPanel(modifier = Modifier.fillMaxWidth().weight(1.1f), inset = isCompact) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        uiState.bank.forEach { tile ->
-                            DraggableSyllableComposable(
-                                tile = tile,
-                                modifier = Modifier.weight(1f).fillMaxHeight(0.72f),
-                                onDropped = { targetId -> routeDrop(targetId, tile.syllable, viewModel) }
-                            )
-                        }
+            BankPanel(modifier = Modifier.weight(0.34f).fillMaxHeight(), inset = isCompact) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    verticalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    uiState.bank.forEach { tile ->
+                        DraggableSyllableComposable(
+                            tile = tile,
+                            modifier = Modifier.fillMaxWidth().height(bankTileHeight),
+                            onDropped = { targetId -> routeDrop(targetId, tile.syllable, viewModel) }
+                        )
                     }
-                    Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 10.dp))
-                    ControlButtons(
-                        onRandom = viewModel::onRandom,
-                        onClear = viewModel::onClearAll,
-                        height = controlHeight,
-                        iconSize = controlIconSize,
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
+                Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 10.dp))
+                ControlButtons(
+                    onRandom = viewModel::onRandom,
+                    onClear = viewModel::onClearAll,
+                    height = controlHeight,
+                    iconSize = controlIconSize,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
 

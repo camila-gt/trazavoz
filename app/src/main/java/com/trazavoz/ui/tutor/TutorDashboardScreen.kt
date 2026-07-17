@@ -10,6 +10,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,19 +62,33 @@ fun TutorDashboardScreen(
 
         Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 16.dp))
 
+        val tabFontSize = if (isCompact) 12.sp else 14.sp
+        val tabIconSize = if (isCompact) 18.dp else 22.dp
         TabRow(selectedTabIndex = selectedTab) {
-            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                Text("Biblioteca", modifier = Modifier.padding(if (isCompact) 6.dp else 12.dp), fontWeight = FontWeight.Bold, fontSize = if (isCompact) 12.sp else 14.sp)
-            }
-            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                Text("Tableros", modifier = Modifier.padding(if (isCompact) 6.dp else 12.dp), fontWeight = FontWeight.Bold, fontSize = if (isCompact) 12.sp else 14.sp)
-            }
-            Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
-                Text("Estadísticas", modifier = Modifier.padding(if (isCompact) 6.dp else 12.dp), fontWeight = FontWeight.Bold, fontSize = if (isCompact) 12.sp else 14.sp)
-            }
-            Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }) {
-                Text("Ajustes PIN", modifier = Modifier.padding(if (isCompact) 6.dp else 12.dp), fontWeight = FontWeight.Bold, fontSize = if (isCompact) 12.sp else 14.sp)
-            }
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                text = { Text("Biblioteca", fontWeight = FontWeight.Bold, fontSize = tabFontSize) },
+                icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(tabIconSize)) }
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                text = { Text("Tableros", fontWeight = FontWeight.Bold, fontSize = tabFontSize) },
+                icon = { Icon(Icons.Filled.Dashboard, contentDescription = null, modifier = Modifier.size(tabIconSize)) }
+            )
+            Tab(
+                selected = selectedTab == 2,
+                onClick = { selectedTab = 2 },
+                text = { Text("Estadísticas", fontWeight = FontWeight.Bold, fontSize = tabFontSize) },
+                icon = { Icon(Icons.Filled.BarChart, contentDescription = null, modifier = Modifier.size(tabIconSize)) }
+            )
+            Tab(
+                selected = selectedTab == 3,
+                onClick = { selectedTab = 3 },
+                text = { Text("Ajustes PIN", fontWeight = FontWeight.Bold, fontSize = tabFontSize) },
+                icon = { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(tabIconSize)) }
+            )
         }
 
         Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 16.dp))
@@ -157,19 +178,23 @@ fun BibliotecaTab(
                             }
 
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(
+                                FilledIconButton(
                                     onClick = { wordToEdit = word },
-                                    modifier = Modifier.minTouchTarget(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    )
                                 ) {
-                                    Text("Editar", color = MaterialTheme.colorScheme.onPrimary)
+                                    Icon(Icons.Filled.Edit, contentDescription = "Editar")
                                 }
-                                Button(
+                                FilledIconButton(
                                     onClick = { onDeleteClick(word) },
-                                    modifier = Modifier.minTouchTarget(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.error,
+                                        contentColor = MaterialTheme.colorScheme.onError
+                                    )
                                 ) {
-                                    Text("Eliminar", color = MaterialTheme.colorScheme.onError)
+                                    Icon(Icons.Filled.Delete, contentDescription = "Eliminar")
                                 }
                             }
                         }
@@ -256,17 +281,19 @@ fun TablerosTab(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(board.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-                            Button(
+                            FilledIconButton(
                                 onClick = {
                                     if (selectedBoardForEdit?.id == board.id) {
                                         selectedBoardForEdit = null
                                     }
                                     viewModel.deleteBoard(board)
                                 },
-                                modifier = Modifier.minTouchTarget(),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                                )
                             ) {
-                                Text("Eliminar", color = MaterialTheme.colorScheme.onError)
+                                Icon(Icons.Filled.Delete, contentDescription = "Eliminar")
                             }
                         }
                     }

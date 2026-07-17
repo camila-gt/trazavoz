@@ -9,6 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +35,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.trazavoz.ui.components.BackButton
 import com.trazavoz.ui.components.LocalDragAndDropState
 import com.trazavoz.ui.components.DragAndDropContainer
 import com.trazavoz.ui.theme.CoralPastel
@@ -95,12 +96,19 @@ fun SyllablePracticeScreen(
                     .weight(0.68f)
                     .fillMaxHeight()
             ) {
-                BackButton(
+                FilledIconButton(
                     onClick = onBackClick,
-                    width = if (isCompact) 90.dp else 110.dp,
-                    height = if (isCompact) 44.dp else 52.dp,
-                    isCompact = isCompact
-                )
+                    modifier = Modifier.size(if (isCompact) 44.dp else 52.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Volver"
+                    )
+                }
 
                 Spacer(modifier = Modifier.weight(0.25f))
 

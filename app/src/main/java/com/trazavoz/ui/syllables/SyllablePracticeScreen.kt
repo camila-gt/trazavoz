@@ -8,7 +8,6 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -35,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.trazavoz.ui.components.BackButton
 import com.trazavoz.ui.components.DragAndDropContainer
 import com.trazavoz.ui.components.LocalDragAndDropState
 import com.trazavoz.ui.components.LockLandscapeOrientation
@@ -206,23 +206,6 @@ private fun BankPanel(
         horizontalAlignment = Alignment.CenterHorizontally,
         content = content
     )
-}
-
-@Composable
-private fun BackButton(onClick: () -> Unit, size: Dp) {
-    FilledIconButton(
-        onClick = onClick,
-        modifier = Modifier.size(size),
-        colors = IconButtonDefaults.filledIconButtonColors(
-            containerColor = MaterialTheme.colorScheme.secondary,
-            contentColor = MaterialTheme.colorScheme.onSecondary
-        )
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Volver"
-        )
-    }
 }
 
 /** Palabra del tutor: dos cajas contiguas; tocarla la pronuncia completa. */

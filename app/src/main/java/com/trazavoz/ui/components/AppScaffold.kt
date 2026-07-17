@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,15 +44,14 @@ fun ScreenHeader(
         windowInfo.isLandscape -> 26.sp
         else -> 23.sp
     }
-    val btnHeight = if (windowInfo.isCompactHeight) 44.dp else 56.dp
-    val btnWidth = if (windowInfo.isCompactHeight) 90.dp else 120.dp
+    val btnSize = if (windowInfo.isCompactHeight) 44.dp else 56.dp
 
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = if (trailing != null) Arrangement.SpaceBetween else Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BackButton(onBackClick, btnWidth, btnHeight, windowInfo.isCompactHeight)
+        BackButton(onClick = onBackClick, size = btnSize)
 
         Text(
             text = title,
@@ -66,20 +68,19 @@ fun ScreenHeader(
 @Composable
 fun BackButton(
     onClick: () -> Unit,
-    width: Dp = 120.dp,
-    height: Dp = 56.dp,
-    isCompact: Boolean = false
+    size: Dp = 56.dp
 ) {
-    Button(
+    FilledIconButton(
         onClick = onClick,
-        modifier = Modifier.size(width = width, height = height),
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+        modifier = Modifier.size(size),
+        colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.secondary,
+            contentColor = MaterialTheme.colorScheme.onSecondary
+        )
     ) {
-        Text(
-            text = "Volver",
-            fontSize = if (isCompact) 14.sp else 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSecondary
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = "Volver"
         )
     }
 }

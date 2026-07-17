@@ -58,20 +58,20 @@ fun GameScreen(
 
     val windowInfo = rememberWindowInfo()
     val screenHeight = windowInfo.screenHeightDp
-    val screenWidth = windowInfo.screenWidthDp
     val isCompact = windowInfo.isCompactHeight
-    val isLandscape = windowInfo.isLandscape
 
-    val imageSize = if (isCompact) min(screenHeight * 0.4f, 160.dp) else if (!isLandscape) min(screenWidth * 0.4f, 180.dp) else 220.dp
-    val slotSize = if (isCompact) min(screenHeight * 0.18f, 60.dp) else if (!isLandscape) 60.dp else 80.dp
-    val letterSize = if (isCompact) min(screenHeight * 0.18f, 60.dp) else if (!isLandscape) 60.dp else 80.dp
-    val letterTrayHeight = if (isCompact) min(screenHeight * 0.22f, 80.dp) else if (!isLandscape) 90.dp else 110.dp
-    val slotFontSize = if (isCompact) 24.sp else if (!isLandscape) 28.sp else 36.sp
-    val syllableBtnHeight = if (isCompact) 40.dp else if (!isLandscape) 44.dp else 60.dp
-    val syllableFontSize = if (isCompact) 16.sp else if (!isLandscape) 18.sp else 22.sp
-    val headerBtnHeight = if (isCompact) 44.dp else if (!isLandscape) 48.dp else 60.dp
-    val headerBtnWidth = if (isCompact) 90.dp else if (!isLandscape) 100.dp else 120.dp
-    val padding = if (isCompact) 8.dp else if (!isLandscape) 12.dp else 16.dp
+    // La pantalla está bloqueada en horizontal (ver LockLandscapeOrientation):
+    // isCompact distingue teléfono (alto reducido) de tablet (alto amplio).
+    val imageSize = if (isCompact) min(screenHeight * 0.4f, 160.dp) else 220.dp
+    val slotSize = if (isCompact) min(screenHeight * 0.18f, 60.dp) else 80.dp
+    val letterSize = if (isCompact) min(screenHeight * 0.18f, 60.dp) else 80.dp
+    val letterTrayHeight = if (isCompact) min(screenHeight * 0.22f, 80.dp) else 110.dp
+    val slotFontSize = if (isCompact) 24.sp else 36.sp
+    val syllableBtnHeight = if (isCompact) 40.dp else 60.dp
+    val syllableFontSize = if (isCompact) 16.sp else 22.sp
+    val headerBtnHeight = if (isCompact) 44.dp else 60.dp
+    val headerBtnWidth = if (isCompact) 90.dp else 120.dp
+    val padding = if (isCompact) 8.dp else 16.dp
 
     LaunchedEffect(wordId) {
         viewModel.startNewGame(wordId)
@@ -111,58 +111,29 @@ fun GameScreen(
             )
 
             uiState.word?.let { word ->
-                if (isLandscape) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(vertical = if (isCompact) 4.dp else 16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    WordImageAndSyllables(word, imageSize, syllableBtnHeight, syllableFontSize, ttsManager, isCompact)
+
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(vertical = if (isCompact) 4.dp else 16.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        WordImageAndSyllables(word, imageSize, syllableBtnHeight, syllableFontSize, ttsManager, isCompact)
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            uiState.targetSlots.forEachIndexed { idx, slot ->
-                                DropSlotComposable(
-                                    slot = slot,
-                                    slotSize = slotSize,
-                                    fontSize = slotFontSize,
-                                    onLetterDropped = { letter ->
-                                        viewModel.onLetterDropped(letter, idx)
-                                    }
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        WordImageAndSyllables(word, imageSize, syllableBtnHeight, syllableFontSize, ttsManager, isCompact)
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            uiState.targetSlots.forEachIndexed { idx, slot ->
-                                DropSlotComposable(
-                                    slot = slot,
-                                    slotSize = slotSize,
-                                    fontSize = slotFontSize,
-                                    onLetterDropped = { letter ->
-                                        viewModel.onLetterDropped(letter, idx)
-                                    }
-                                )
-                            }
+                        uiState.targetSlots.forEachIndexed { idx, slot ->
+                            DropSlotComposable(
+                                slot = slot,
+                                slotSize = slotSize,
+                                fontSize = slotFontSize,
+                                onLetterDropped = { letter ->
+                                    viewModel.onLetterDropped(letter, idx)
+                                }
+                            )
                         }
                     }
                 }

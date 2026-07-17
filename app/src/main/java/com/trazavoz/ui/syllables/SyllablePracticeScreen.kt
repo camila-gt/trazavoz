@@ -1,8 +1,6 @@
 package com.trazavoz.ui.syllables
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,7 +12,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,12 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -41,11 +39,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.trazavoz.ui.components.LocalDragAndDropState
 import com.trazavoz.ui.components.DragAndDropContainer
+import com.trazavoz.ui.theme.AmarilloCrema
+import com.trazavoz.ui.theme.CelestePastel
 import com.trazavoz.ui.theme.CoralPastel
+import com.trazavoz.ui.theme.PurpuraSuave
 import com.trazavoz.ui.theme.VerdeManzanaPastel
 import com.trazavoz.ui.theme.colorForLetter
 import com.trazavoz.ui.theme.rememberWindowInfo
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 @Composable
 fun SyllablePracticeScreen(
@@ -270,42 +272,93 @@ fun SyllablePracticeScreen(
             }
         }
 
-        // Celebración superpuesta y NO bloqueante (no captura toques)
+        // Celebración superpuesta y NO bloqueante (el Canvas no captura toques)
         if (uiState.showCelebration) {
-            val entrance = remember { Animatable(0.6f) }
-            LaunchedEffect(Unit) {
-                entrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+            ConfettiOverlay(modifier = Modifier.fillMaxSize())
+        }
+    }
+}
+
+/** Una pieza de confetti; su trayectoria se calcula analíticamente por tiempo. */
+private data class ConfettiPiece(
+    val startXFraction: Float,
+    val startYFraction: Float,
+    val velocityX: Float,       // fracción del ancho por segundo
+    val velocityY: Float,       // fracción del alto por segundo (inicial)
+    val widthPx: Float,
+    val heightPx: Float,
+    val color: Color,
+    val startRotation: Float,
+    val rotationSpeed: Float     // grados por segundo
+)
+
+/**
+ * Lluvia de confetti que cae con gravedad: cada pieza parte del borde superior
+ * con una velocidad inicial y deriva, y va acelerando hacia abajo. Se dibuja en
+ * un Canvas a pantalla completa que NO intercepta toques, así el niño y el tutor
+ * pueden seguir interactuando durante la celebración.
+ */
+@Composable
+private fun ConfettiOverlay(modifier: Modifier = Modifier) {
+    val density = LocalDensity.current
+    val colors = listOf(CoralPastel, CelestePastel, AmarilloCrema, VerdeManzanaPastel, PurpuraSuave)
+
+    val pieces = remember {
+        List(90) {
+            ConfettiPiece(
+                startXFraction = Random.nextFloat(),
+                startYFraction = -Random.nextFloat() * 0.2f,
+                velocityX = (Random.nextFloat() - 0.5f) * 0.15f,
+                velocityY = 0.02f + Random.nextFloat() * 0.08f,
+                widthPx = with(density) { (6 + Random.nextInt(8)).dp.toPx() },
+                heightPx = with(density) { (8 + Random.nextInt(10)).dp.toPx() },
+                color = colors[Random.nextInt(colors.size)],
+                startRotation = Random.nextFloat() * 360f,
+                rotationSpeed = (Random.nextFloat() - 0.5f) * 720f
+            )
+        }
+    }
+
+    var elapsedSeconds by remember { mutableStateOf(0f) }
+    LaunchedEffect(Unit) {
+        val startNanos = withFrameNanos { it }
+        while (true) {
+            withFrameNanos { now ->
+                elapsedSeconds = (now - startNanos) / 1_000_000_000f
             }
-            val starSize = if (isCompact) 48.dp else 72.dp
-            Row(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .scale(entrance.value),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(starSize * 0.8f)
-                )
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = "¡Muy bien!",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(starSize)
-                )
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.size(starSize * 0.8f)
+        }
+    }
+
+    Canvas(modifier = modifier) {
+        val t = elapsedSeconds
+        // Desvanecido suave (smoothstep) a lo largo de toda la caída.
+        val progress = (t / CONFETTI_LIFETIME_SECONDS).coerceIn(0f, 1f)
+        val fade = 1f - (progress * progress * (3f - 2f * progress)) // smoothstep invertido
+        if (fade <= 0f) return@Canvas
+
+        pieces.forEach { piece ->
+            val yFraction = piece.startYFraction +
+                piece.velocityY * t + 0.5f * CONFETTI_GRAVITY * t * t
+            if (yFraction > 1.15f) return@forEach
+
+            val cx = (piece.startXFraction + piece.velocityX * t) * size.width
+            val cy = yFraction * size.height
+            val angle = piece.startRotation + piece.rotationSpeed * t
+
+            rotate(degrees = angle, pivot = Offset(cx, cy)) {
+                drawRect(
+                    color = piece.color,
+                    topLeft = Offset(cx - piece.widthPx / 2f, cy - piece.heightPx / 2f),
+                    size = Size(piece.widthPx, piece.heightPx),
+                    alpha = fade
                 )
             }
         }
     }
 }
+
+private const val CONFETTI_LIFETIME_SECONDS = 5f
+private const val CONFETTI_GRAVITY = 0.10f // fracción del alto por segundo²
 
 /** Enruta un drop al hueco correspondiente según el id del target ("tutor-0", "child-1"). */
 private fun routeDrop(targetId: String, syllable: String, viewModel: SyllablePracticeViewModel) {

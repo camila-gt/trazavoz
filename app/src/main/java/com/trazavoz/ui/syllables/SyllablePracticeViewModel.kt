@@ -130,6 +130,6 @@ class SyllablePracticeViewModel @Inject constructor(
     }
 
     private companion object {
-        const val CELEBRATION_DURATION_MS = 2500L
+        const val CELEBRATION_DURATION_MS = 5000L
     }
 }

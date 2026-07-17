@@ -53,9 +53,23 @@ fun SyllablePracticeScreen(
     val isCompact = windowInfo.isCompactHeight
 
     val padding = if (isCompact) 8.dp else 16.dp
-    val slotWidth = if (isCompact) 72.dp else 96.dp
-    val slotHeight = if (isCompact) 56.dp else 76.dp
-    val slotFontSize = if (isCompact) 22.sp else 30.sp
+    val slotWidth = when {
+        windowInfo.isExpandedWidth -> 180.dp
+        windowInfo.isLandscape -> 150.dp
+        else -> 140.dp
+    }
+    val slotHeight = when {
+        windowInfo.isExpandedWidth -> 150.dp
+        windowInfo.isLandscape -> 104.dp
+        isCompact -> 92.dp
+        else -> 120.dp
+    }
+    val slotFontSize = when {
+        windowInfo.isExpandedWidth -> 46.sp
+        windowInfo.isLandscape -> 38.sp
+        isCompact -> 30.sp
+        else -> 40.sp
+    }
     val bankTileHeight = if (isCompact) 44.dp else 58.dp
     val bankFontSize = if (isCompact) 16.sp else 22.sp
     val controlHeight = if (isCompact) 44.dp else 52.dp

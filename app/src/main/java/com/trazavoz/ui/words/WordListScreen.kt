@@ -59,7 +59,7 @@ fun WordListScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
             ) {
                 Text(
-                    text = "🔤 Practicar sílabas",
+                    text = "Practicar sílabas",
                     fontSize = if (isCompact) 18.sp else 22.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onTertiary

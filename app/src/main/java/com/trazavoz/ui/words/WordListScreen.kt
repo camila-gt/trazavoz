@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.trazavoz.ui.components.ScreenHeader
+import com.trazavoz.ui.syllables.esConsonante
 import com.trazavoz.ui.theme.rememberWindowInfo
 import java.io.File
 
@@ -27,6 +28,7 @@ fun WordListScreen(
     filterValue: String,
     viewModel: WordListViewModel,
     onWordClick: (Int) -> Unit,
+    onPracticeSyllablesClick: (String) -> Unit,
     onBackClick: () -> Unit
 ) {
     val words by viewModel.getWords(filterType, filterValue).collectAsState(initial = emptyList())
@@ -46,6 +48,24 @@ fun WordListScreen(
             .padding(padding)
     ) {
         ScreenHeader(title = title, onBackClick = onBackClick, windowInfo = windowInfo)
+
+        if (filterType == "letter" && esConsonante(filterValue)) {
+            Spacer(modifier = Modifier.height(if (isCompact) 8.dp else 16.dp))
+            Button(
+                onClick = { onPracticeSyllablesClick(filterValue) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (isCompact) 48.dp else 60.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+            ) {
+                Text(
+                    text = "Practicar sílabas",
+                    fontSize = if (isCompact) 18.sp else 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onTertiary
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(if (isCompact) 8.dp else 16.dp))
 

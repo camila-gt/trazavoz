@@ -7,8 +7,8 @@
     <application
         android:name=".TrazavozApplication"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:icon="@mipmap/trazavoz_icon"
+        android:roundIcon="@mipmap/trazavoz_icon_round"
         android:label="Trazavoz"
         android:supportsRtl="true"
         android:theme="@style/Theme.Trazavoz"

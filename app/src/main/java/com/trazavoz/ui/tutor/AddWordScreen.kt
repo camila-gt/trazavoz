@@ -34,6 +34,7 @@ fun AddWordScreen(
     val searchResults by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
     val hasSearched by viewModel.hasSearched.collectAsState()
+    val searchError by viewModel.searchError.collectAsState()
 
     var selectedPic by remember { mutableStateOf<SearchResult?>(null) }
     var wordText by remember { mutableStateOf("") }
@@ -91,6 +92,7 @@ fun AddWordScreen(
                 isSearching = isSearching,
                 hasSearched = hasSearched,
                 searchResults = searchResults,
+                searchError = searchError,
                 selectedPic = selectedPic,
                 windowInfo = windowInfo,
                 onPicSelected = { pic ->
@@ -157,6 +159,7 @@ private fun SearchResultsPane(
     isSearching: Boolean,
     hasSearched: Boolean,
     searchResults: List<SearchResult>,
+    searchError: String?,
     selectedPic: SearchResult?,
     windowInfo: WindowInfo,
     onPicSelected: (SearchResult) -> Unit
@@ -165,6 +168,11 @@ private fun SearchResultsPane(
         isSearching -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        searchError != null -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(searchError, color = MaterialTheme.colorScheme.error)
             }
         }
         searchResults.isEmpty() && hasSearched -> {

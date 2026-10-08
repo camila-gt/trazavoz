@@ -33,4 +33,6 @@ Los mensajes de commit siguen [Conventional Commits](https://www.conventionalcom
 
 ## Licencia
 
-[MIT](LICENSE).
+Este proyecto está bajo la licencia [GNU General Public License v3.0 (GPLv3)](LICENSE).
+
+Los pictogramas utilizados son propiedad del Gobierno de Aragón y han sido creados por Sergio Palao para [ARASAAC](https://arasaac.org/), distribuidos bajo licencia [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).

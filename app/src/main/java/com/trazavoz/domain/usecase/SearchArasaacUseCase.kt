@@ -22,6 +22,8 @@ class SearchArasaacUseCase @Inject constructor(
                     imageUrl = "https://api.arasaac.org/api/pictograms/${dto.id}"
                 )
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             // Retrofit will throw HttpException with code 404 if no results are found
             emptyList()

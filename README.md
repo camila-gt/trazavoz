@@ -11,7 +11,7 @@ Los `.apk` de cada versión se publican en [Releases](../../releases). No requie
 ## Funcionalidades
 
 - **Modo niño**: selección por abecedario o por tablero temático, juego de arrastrar letras con lectura en voz alta de sílabas y palabras, celebración al completar.
-- **Modo Tutor** (PIN de 4 dígitos): buscar y añadir palabras desde ARASAAC con silabeo automático editable, administrar tableros, y ver estadísticas de progreso (partidas jugadas, errores promedio, palabras más difíciles).
+- **Modo Tutor** (PIN de 4 dígitos): buscar y añadir palabras desde ARASAAC con silabeo automático editable, administrar tableros, y ver estadísticas de progreso (partidas jugadas, errores promedio, palabras más difíciles). *El PIN por defecto es **0000** y puede cambiarse en la sección de Ajustes de PIN del panel.*
 - Funciona sin conexión una vez guardadas las palabras (las imágenes se cachean en disco).
 - Interfaz responsiva (teléfono y tablet, cualquier orientación) con Material You (color dinámico en Android 12+).
 

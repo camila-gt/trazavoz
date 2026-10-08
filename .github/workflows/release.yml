@@ -36,6 +36,9 @@ jobs:
             echo "::warning::No hay KEYSTORE_BASE64 configurado; el APK se firmara con la clave de debug."
           fi
 
+      - name: Dar permisos a gradlew
+        run: chmod +x gradlew
+
       - name: Compilar APK de release
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}

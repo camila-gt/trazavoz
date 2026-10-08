@@ -9,8 +9,11 @@ class SearchArasaacUseCase @Inject constructor(
     private val apiService: ArasaacApiService
 ) {
     suspend operator fun invoke(query: String): List<SearchResult> {
+        val cleanQuery = query.trim().lowercase()
+        if (cleanQuery.isBlank()) return emptyList()
+
         return try {
-            val dtos = apiService.searchPictograms(query)
+            val dtos = apiService.searchPictograms(cleanQuery)
             dtos.map { dto ->
                 val primaryKeyword = dto.keywords.firstOrNull()?.keyword ?: ""
                 SearchResult(
@@ -20,6 +23,7 @@ class SearchArasaacUseCase @Inject constructor(
                 )
             }
         } catch (e: Exception) {
+            // Retrofit will throw HttpException with code 404 if no results are found
             emptyList()
         }
     }

@@ -33,6 +33,7 @@ fun AddWordScreen(
     var searchQuery by remember { mutableStateOf("") }
     val searchResults by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
+    val hasSearched by viewModel.hasSearched.collectAsState()
 
     var selectedPic by remember { mutableStateOf<SearchResult?>(null) }
     var wordText by remember { mutableStateOf("") }
@@ -88,6 +89,7 @@ fun AddWordScreen(
         val resultsPane: @Composable () -> Unit = {
             SearchResultsPane(
                 isSearching = isSearching,
+                hasSearched = hasSearched,
                 searchResults = searchResults,
                 selectedPic = selectedPic,
                 windowInfo = windowInfo,
@@ -153,6 +155,7 @@ fun AddWordScreen(
 @Composable
 private fun SearchResultsPane(
     isSearching: Boolean,
+    hasSearched: Boolean,
     searchResults: List<SearchResult>,
     selectedPic: SearchResult?,
     windowInfo: WindowInfo,
@@ -162,6 +165,11 @@ private fun SearchResultsPane(
         isSearching -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        searchResults.isEmpty() && hasSearched -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No se encontraron resultados para esta búsqueda.", color = MaterialTheme.colorScheme.error)
             }
         }
         searchResults.isEmpty() -> {

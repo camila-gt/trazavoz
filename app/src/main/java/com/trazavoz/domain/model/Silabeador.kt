@@ -54,8 +54,9 @@ object Silabeador {
 
     private fun isInseparable(c1: Char, c2: Char): Boolean {
         val group = "$c1$c2"
+        // Para TL se adopta la variante inseparable: A-TLAS, A-TLE-TA.
         return group in listOf(
-            "BL", "BR", "CL", "CR", "DR", "FL", "FR", "GL", "GR", "PL", "PR", "TR",
+            "BL", "BR", "CL", "CR", "DR", "FL", "FR", "GL", "GR", "PL", "PR", "TR", "TL",
             "CH", "LL", "RR"
         )
     }

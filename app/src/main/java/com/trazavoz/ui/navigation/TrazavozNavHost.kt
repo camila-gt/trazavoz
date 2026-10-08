@@ -12,6 +12,8 @@ import com.trazavoz.ui.game.GameScreen
 import com.trazavoz.ui.game.GameViewModel
 import com.trazavoz.ui.menu.MenuScreen
 import com.trazavoz.ui.menu.MenuViewModel
+import com.trazavoz.ui.syllables.SyllablePracticeScreen
+import com.trazavoz.ui.syllables.SyllablePracticeViewModel
 import com.trazavoz.ui.tutor.AddWordScreen
 import com.trazavoz.ui.tutor.TutorDashboardScreen
 import com.trazavoz.ui.tutor.TutorViewModel
@@ -62,6 +64,27 @@ fun TrazavozNavHost(
                 onWordClick = { wordId ->
                     navController.navigate("game/$wordId")
                 },
+                onPracticeSyllablesClick = { letter ->
+                    navController.navigate("syllable_practice/$letter")
+                },
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = "syllable_practice/{letter}",
+            arguments = listOf(
+                navArgument("letter") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val letter = backStackEntry.arguments?.getString("letter") ?: ""
+            val viewModel: SyllablePracticeViewModel = hiltViewModel()
+
+            SyllablePracticeScreen(
+                letter = letter,
+                viewModel = viewModel,
                 onBackClick = {
                     navController.popBackStack()
                 }

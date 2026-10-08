@@ -6,6 +6,29 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Version derivada de git: `git describe` (ej. tag "v1.2.0" -> "1.2.0") y el
+// numero total de commits como versionCode, que siempre crece. Sin tags
+// todavia, cae al hash corto (valido para builds de desarrollo).
+fun gitVersionName(): String {
+    return try {
+        providers.exec {
+            commandLine("git", "describe", "--tags", "--always", "--dirty")
+        }.standardOutput.asText.get().trim().removePrefix("v")
+    } catch (e: Exception) {
+        "0.0.0-dev"
+    }
+}
+
+fun gitVersionCode(): Int {
+    return try {
+        providers.exec {
+            commandLine("git", "rev-list", "--count", "HEAD")
+        }.standardOutput.asText.get().trim().toIntOrNull() ?: 1
+    } catch (e: Exception) {
+        1
+    }
+}
+
 android {
     namespace = "com.trazavoz"
     compileSdk = 35
@@ -14,12 +37,24 @@ android {
         applicationId = "com.trazavoz"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = gitVersionCode()
+        versionName = gitVersionName()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("KEYSTORE_PATH")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
         }
     }
 
@@ -30,6 +65,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Si no hay secretos de firma en el entorno (ej. build local de un
+            // colaborador), cae a la firma de debug para que igual compile.
+            signingConfig = if (System.getenv("KEYSTORE_PATH") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
     compileOptions {
@@ -61,6 +103,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
 

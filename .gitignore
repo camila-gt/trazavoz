@@ -18,3 +18,7 @@ Docs/
 *.jks
 *.keystore
 keystore.properties
+
+# GitHub Workflows (excepcion a gitignore global)
+!.github/
+!.github/**

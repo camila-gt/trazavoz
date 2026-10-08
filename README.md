@@ -25,7 +25,7 @@ Kotlin + Jetpack Compose (Material 3), Room, Retrofit, Coil, Hilt, Navigation Co
 ./gradlew assembleDebug
 ```
 
-Requiere JDK 17 y Android SDK (`compileSdk`/`targetSdk` 35, `minSdk` 24).
+Requiere JDK 21 y Android SDK (`compileSdk`/`targetSdk` 35, `minSdk` 24).
 
 ## Contribuir
 

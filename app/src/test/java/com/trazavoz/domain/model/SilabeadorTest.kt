@@ -52,7 +52,8 @@ class SilabeadorTest {
         assertEquals("CO-HE-TE", Silabeador.separar("COHETE"))
         assertEquals("PROHI-BIR", Silabeador.separar("PROHIBIR"))
         assertEquals("BÚ-HO", Silabeador.separar("BÚHO"))
-        assertEquals("A-HU-MAR", Silabeador.separar("AHUMAR"))
+        // La h intercalada no rompe el diptongo ortografico.
+        assertEquals("AHU-MAR", Silabeador.separar("AHUMAR"))
     }
 
     @Test
@@ -61,6 +62,27 @@ class SilabeadorTest {
         assertEquals("COM-PRAR", Silabeador.separar("COMPRAR"))
         assertEquals("CONS-TRUIR", Silabeador.separar("CONSTRUIR"))
         assertEquals("A-TLAS", Silabeador.separar("ATLAS"))
+    }
+
+    @Test
+    fun testDiptongosConHacheIntercalada() {
+        assertEquals("AHI-JA-DO", Silabeador.separar("AHIJADO"))
+        assertEquals("DE-SAHU-CIO", Silabeador.separar("DESAHUCIO"))
+    }
+
+    @Test
+    fun testHiatosConHacheIntercalada() {
+        assertEquals("PRO-HÍ-BO", Silabeador.separar("PROHÍBO"))
+        assertEquals("A-ZA-HAR", Silabeador.separar("AZAHAR"))
+        assertEquals("TA-HÚR", Silabeador.separar("TAHÚR"))
+    }
+
+    @Test
+    fun testGrupoTlInseparable() {
+        // Se adopta la variante con tl en la misma silaba, como en A-TLAS.
+        assertEquals("A-TLE-TA", Silabeador.separar("ATLETA"))
+        assertEquals("A-TLÁN-TI-CO", Silabeador.separar("ATLÁNTICO"))
+        assertEquals("A-TLE-TIS-MO", Silabeador.separar("ATLETISMO"))
     }
 
     @Test

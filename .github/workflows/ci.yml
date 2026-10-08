@@ -24,6 +24,9 @@ jobs:
       - name: Cachear Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Dar permisos a gradlew
+        run: chmod +x gradlew
+
       - name: Lint
         run: ./gradlew lintDebug
 

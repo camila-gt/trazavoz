@@ -51,10 +51,14 @@ class TutorViewModel @Inject constructor(
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
 
+    private val _hasSearched = MutableStateFlow(false)
+    val hasSearched: StateFlow<Boolean> = _hasSearched.asStateFlow()
+
     fun searchWord(query: String) {
         viewModelScope.launch {
             if (query.isBlank()) return@launch
             _isSearching.value = true
+            _hasSearched.value = true
             _searchResults.value = searchArasaacUseCase(query)
             _isSearching.value = false
         }
@@ -62,6 +66,7 @@ class TutorViewModel @Inject constructor(
 
     fun clearSearchResults() {
         _searchResults.value = emptyList()
+        _hasSearched.value = false
     }
 
     fun getSuggestedSyllables(text: String): String {

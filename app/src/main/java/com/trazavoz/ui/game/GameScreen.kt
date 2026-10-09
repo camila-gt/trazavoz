@@ -1,7 +1,9 @@
 package com.trazavoz.ui.game
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -9,37 +11,39 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Replay
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.trazavoz.domain.model.Word
@@ -52,203 +56,212 @@ import com.trazavoz.ui.theme.rememberWindowInfo
 import java.io.File
 import kotlin.math.roundToInt
 
-// Colores fijos para vocales y consonantes (texto)
-val VowelColor = Color(0xFFD32F2F)
-val ConsonantColor = Color(0xFF1976D2)
+internal data class GameDragPiece(val piece: PieceItem, val width: Dp, val height: Dp)
 
 @Composable
 fun GameScreen(
     wordId: Int,
     viewModel: GameViewModel,
-    ttsManager: TrazavozTtsManager,
+    @Suppress("UNUSED_PARAMETER") ttsManager: TrazavozTtsManager,
     onBackClick: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-
+    val state by viewModel.uiState.collectAsState()
     LockLandscapeOrientation()
+    val window = rememberWindowInfo()
+    val compact = window.isCompactHeight
+    val back = { viewModel.leaveGame(); onBackClick() }
+    BackHandler(onBack = back)
+    LaunchedEffect(wordId) { viewModel.startNewGame(wordId) }
+    DisposableEffect(viewModel) { onDispose { viewModel.leaveGame() } }
 
-    val windowInfo = rememberWindowInfo()
-    val isCompact = windowInfo.isCompactHeight
-
-    LaunchedEffect(wordId) {
-        viewModel.startNewGame(wordId)
-    }
-
-    DragAndDropContainer(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) { dragState ->
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            ScreenHeader(
-                title = when (uiState.currentPhase) {
-                    GamePhase.SYLLABLES, GamePhase.SYLLABLES_SUCCESS -> "FASE 1: SÍLABAS"
-                    GamePhase.LETTERS, GamePhase.COMPLETED -> "FASE 2: LETRAS INDIVIDUALES"
-                    else -> "Cargando..."
-                },
-                onBackClick = onBackClick,
-                windowInfo = windowInfo
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Panel Izquierdo: Ancla visual (Imagen y Palabra estática)
-                Box(
-                    modifier = Modifier
-                        .weight(0.28f)
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.Center
+    LiteracyGameTheme {
+        DragAndDropContainer(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { drag ->
+            LaunchedEffect(state.boardKey, state.currentPhase) { drag.cancelDrag() }
+            Column(Modifier.fillMaxSize()) {
+                ScreenHeader(
+                    title = phaseTitle(state.currentPhase),
+                    onBackClick = back,
+                    windowInfo = window
+                )
+                Row(
+                    Modifier.fillMaxWidth().weight(1f).padding(if (compact) 8.dp else 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 24.dp)
                 ) {
-                    uiState.word?.let { word ->
-                        LeftAnchorPanel(word = word, ttsManager = ttsManager, isCompact = isCompact)
-                    }
-                }
-
-                // Panel Derecho: Zona de acción (Huecos y Fichas)
-                Box(
-                    modifier = Modifier
-                        .weight(0.72f)
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AnimatedContent(
-                        targetState = uiState.currentPhase,
-                        transitionSpec = {
-                            fadeIn(animationSpec = tween(600)) togetherWith fadeOut(animationSpec = tween(600))
-                        },
-                        label = "game_phase_transition"
-                    ) { phase ->
-                        when (phase) {
-                            GamePhase.SYLLABLES, GamePhase.SYLLABLES_SUCCESS, GamePhase.LETTERS -> {
-                                ActionAreaPanel(
-                                    uiState = uiState,
-                                    viewModel = viewModel,
-                                    ttsManager = ttsManager,
-                                    isCompact = isCompact,
-                                    phase = phase
-                                )
-                            }
-                            GamePhase.COMPLETED -> {
-                                CompletionPanel(
-                                    wordText = uiState.word?.text ?: "",
-                                    onReplayClick = { viewModel.startNewGame(wordId) },
-                                    onBackClick = onBackClick
-                                )
-                            }
-                            GamePhase.ERROR -> {
-                                Text("Error al cargar la palabra.", fontSize = 24.sp, color = MaterialTheme.colorScheme.error)
-                            }
-                            else -> {}
+                    Surface(
+                        modifier = Modifier.weight(if (compact) 0.32f else 0.28f).fillMaxHeight(),
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surface
+                    ) {
+                        state.word?.let { word ->
+                            LeftAnchorPanel(word, compact, state.currentPhase != GamePhase.SYLLABLES_SUCCESS, viewModel::speakReference)
                         }
+                    }
+                    Surface(
+                        modifier = Modifier.weight(if (compact) 0.68f else 0.72f).fillMaxHeight(),
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surface
+                    ) {
+                        GameBoardPanel(state, viewModel, compact, { viewModel.startNewGame(wordId) }, back)
                     }
                 }
             }
-        }
-
-        // Ficha flotante al arrastrar
-        if (dragState.isDragging && dragState.dragItem is PieceItem) {
-            val draggedPiece = dragState.dragItem as PieceItem
-            val density = LocalDensity.current
-            val localPos = dragState.currentDragLocalPosition
-            val pieceWidth = if (uiState.currentPhase == GamePhase.SYLLABLES) 120.dp else 80.dp
-            val pieceHeight = 80.dp
-            
-            val halfWidth = with(density) { pieceWidth.toPx() / 2f }
-            val halfHeight = with(density) { pieceHeight.toPx() / 2f }
-
-            ElevatedCard(
-                modifier = Modifier
-                    .size(width = pieceWidth, height = pieceHeight)
-                    .offset {
-                        IntOffset(
-                            (localPos.x - halfWidth).roundToInt(),
-                            (localPos.y - halfHeight).roundToInt()
-                        )
-                    }
-                    .alpha(0.85f),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = buildPieceAnnotatedString(draggedPiece.text),
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        textAlign = TextAlign.Center
-                    )
-                }
+            (drag.dragItem as? GameDragPiece)?.takeIf { drag.isDragging }?.let { lifted ->
+                val density = LocalDensity.current
+                val halfWidth = with(density) { lifted.width.toPx() / 2 }
+                val halfHeight = with(density) { lifted.height.toPx() / 2 }
+                val position = drag.currentDragLocalPosition
+                PieceTile(
+                    lifted.piece.text,
+                    Modifier.size(lifted.width, lifted.height).offset {
+                        IntOffset((position.x - halfWidth).roundToInt(), (position.y - halfHeight).roundToInt())
+                    }.alpha(0.9f).clearAndSetSemantics { },
+                    selected = true
+                )
             }
         }
     }
 }
 
 @Composable
-fun LeftAnchorPanel(
-    word: Word,
-    ttsManager: TrazavozTtsManager,
-    isCompact: Boolean
-) {
-    val imageSize = if (isCompact) 140.dp else 200.dp
-    
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
+internal fun GameBoardPanel(state: GameUiState, viewModel: GameViewModel, compact: Boolean, onReplay: () -> Unit, onBack: () -> Unit) {
+    val transition = updateTransition(state, label = "game_board")
+    // Immutable snapshots keep outgoing content on its original board.
+    // Partial success shares its key with syllables, avoiding duplicate targets.
+    transition.AnimatedContent(
+        contentKey = { it.boardKey },
+        transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(250)) },
+        modifier = Modifier.fillMaxSize()
+    ) { snapshot ->
+        val active = snapshot.isInteractive && snapshot.boardKey == state.boardKey &&
+            transition.currentState.boardKey == transition.targetState.boardKey
+        when (snapshot.currentPhase) {
+            GamePhase.SYLLABLES, GamePhase.SYLLABLES_SUCCESS, GamePhase.LETTERS ->
+                ActionAreaPanel(snapshot, viewModel, compact, active)
+            GamePhase.COMPLETED -> CompletionPanel(snapshot, compact, onReplay, onBack)
+            GamePhase.ERROR -> MessagePanel(snapshot.errorMessage.orEmpty(), onReplay, onBack)
+            GamePhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Preparando la palabra…", Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            }
+        }
+    }
+}
+
+private fun phaseTitle(phase: GamePhase): String = when (phase) {
+    GamePhase.SYLLABLES, GamePhase.SYLLABLES_SUCCESS -> "FASE 1: SÍLABAS"
+    GamePhase.LETTERS, GamePhase.COMPLETED -> "FASE 2: LETRAS INDIVIDUALES"
+    GamePhase.ERROR -> "Preparar palabra"
+    GamePhase.LOADING -> "Cargando…"
+}
+
+@Composable
+private fun LeftAnchorPanel(word: Word, compact: Boolean, audioEnabled: Boolean, onListen: () -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxSize().padding(if (compact) 8.dp else 20.dp)) {
+        val imageSize = minOf(maxWidth, if (compact) 120.dp else 220.dp)
         Column(
-            modifier = Modifier.padding(16.dp),
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Box(
-                modifier = Modifier
-                    .size(imageSize)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { ttsManager.hablarPalabra(word.text) },
+                Modifier.size(imageSize).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+                    .clickable(enabled = audioEnabled, role = Role.Button, onClickLabel = "Escuchar ${word.text}", onClick = onListen)
+                    .semantics(mergeDescendants = true) { contentDescription = "Imagen de ${word.text}. Escuchar palabra" }
+            ) {
+                AsyncImage(
+                    model = word.localImagePath?.let(::File) ?: word.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().padding(12.dp)
+                )
+                IconButton(
+                    onClick = onListen,
+                    enabled = audioEnabled,
+                    modifier = Modifier.align(Alignment.BottomEnd).size(48.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.VolumeUp, "Escuchar ${word.text}")
+                }
+            }
+            Spacer(Modifier.height(if (compact) 8.dp else 24.dp))
+            Text(word.text, fontSize = if (compact) 28.sp else 44.sp, lineHeight = if (compact) 36.sp else 56.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text("Toca la imagen para escuchar", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun ActionAreaPanel(state: GameUiState, viewModel: GameViewModel, compact: Boolean, enabled: Boolean) {
+    val syllables = state.boardKey.phase == GamePhase.SYLLABLES
+    BoxWithConstraints(Modifier.fillMaxSize().padding(if (compact) 8.dp else 20.dp)) {
+        val fontScale = LocalDensity.current.fontScale
+        val longest = state.piecesToPlace.maxOfOrNull { it.text.length } ?: 1
+        val textWidth = longest * 26 * fontScale
+        val tileWidth = minOf(maxWidth, maxOf(if (compact) 64.dp else 88.dp, (textWidth + 24).dp))
+        val lines = kotlin.math.ceil(textWidth / maxOf(1f, tileWidth.value - 8)).toInt().coerceAtLeast(1)
+        val tileHeight = maxOf(if (compact) 64.dp else 88.dp, (lines * 40 * fontScale + 16).dp)
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                if (syllables) "Arrastra las sílabas a los espacios vacíos" else "Ordena las letras para formar la palabra",
+                fontSize = if (compact) 16.sp else 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            )
+            Text(
+                if (state.currentPhase == GamePhase.SYLLABLES_SUCCESS) "¡Muy bien! Ahora vamos con las letras." else "Arrastra una ficha y suéltala en su espacio.",
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+                color = if (state.currentPhase == GamePhase.SYLLABLES_SUCCESS) SuccessColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 4.dp).semantics { liveRegion = LiveRegionMode.Polite }
+            )
+            var viewport by remember(state.boardKey) { mutableStateOf(Rect.Zero) }
+            Box(
+                Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it.boundsInWindow() }
+                    .verticalScroll(rememberScrollState()),
                 contentAlignment = Alignment.Center
             ) {
-                val imageSource = if (word.localImagePath != null) File(word.localImagePath) else word.imageUrl
-                AsyncImage(
-                    model = imageSource,
-                    contentDescription = "Toca para escuchar",
-                    modifier = Modifier.fillMaxSize().padding(8.dp)
-                )
-                // Ícono de altavoz sutil
-                Icon(
-                    imageVector = Icons.Filled.VolumeUp,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(8.dp)
-                        .background(Color.White.copy(alpha = 0.7f), shape = RoundedCornerShape(50))
-                        .padding(4.dp),
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
+                FlowRow(
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    state.targetSlots.forEachIndexed { index, slot ->
+                        key(slot.id) {
+                            if (slot.separatorBefore.isNotEmpty()) Separator(slot.separatorBefore, tileHeight)
+                            DropSlotComposable(
+                                slot, tileWidth, tileHeight, (index + 1).toString(), enabled, viewport
+                            )
+                        }
+                    }
+                    if (state.trailingSeparator.isNotEmpty()) Separator(state.trailingSeparator, tileHeight)
+                }
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
+            Surface(
+                modifier = Modifier.fillMaxWidth().weight(0.85f),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, TileBorder)
+            ) {
+                FlowRow(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    state.piecesToPlace.forEach { piece ->
+                        key(piece.id) {
+                            DraggablePieceComposable(piece, tileWidth, tileHeight, enabled, viewModel)
+                        }
+                    }
+                }
+            }
             Text(
-                text = word.text.uppercase(),
-                fontSize = if (isCompact) 32.sp else 42.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
-            )
-            
-            Text(
-                text = "Toca la imagen para escuchar",
+                buildAnnotatedString {
+                    withStyle(SpanStyle(color = ConsonantColor)) { append("● Consonantes (Azul)") }
+                    append("   ")
+                    withStyle(SpanStyle(color = VowelColor)) { append("● Vocales (Rojo)") }
+                },
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -256,263 +269,136 @@ fun LeftAnchorPanel(
 }
 
 @Composable
-fun ActionAreaPanel(
-    uiState: GameUiState,
-    viewModel: GameViewModel,
-    ttsManager: TrazavozTtsManager,
-    isCompact: Boolean,
-    phase: GamePhase
-) {
-    val isSyllablePhase = phase == GamePhase.SYLLABLES || phase == GamePhase.SYLLABLES_SUCCESS
-    val titleText = if (isSyllablePhase) "Arrastra las sílabas a los espacios vacíos" else "Ordena las letras para formar la palabra"
-    
-    val slotWidth = if (isSyllablePhase) (if(isCompact) 100.dp else 140.dp) else (if(isCompact) 60.dp else 80.dp)
-    val slotHeight = if (isCompact) 70.dp else 90.dp
-
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = titleText,
-            fontSize = if (isCompact) 18.sp else 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 8.dp)
-        )
-        
-        // ZONA DE HUECOS
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
-        ) {
-            uiState.targetSlots.forEachIndexed { index, slot ->
-                DropSlotComposable(
-                    slot = slot,
-                    width = slotWidth,
-                    height = slotHeight,
-                    label = (index + 1).toString(),
-                    onItemDropped = { piece -> viewModel.onItemDropped(piece, slot.id) }
-                )
-            }
-        }
-        
-        // ZONA DE FICHAS (BANDEJA)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .height(slotHeight + 24.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                .padding(12.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                uiState.piecesToPlace.forEach { piece ->
-                    DraggablePieceComposable(
-                        piece = piece,
-                        width = slotWidth,
-                        height = slotHeight,
-                        viewModel = viewModel,
-                        ttsManager = ttsManager
-                    )
-                }
-            }
-        }
-        
-        // Leyenda de colores
-        Row(
-            modifier = Modifier.padding(bottom = 8.dp, top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(50)).background(ConsonantColor))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Consonantes", fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(50)).background(VowelColor))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Vocales", fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground)
-            }
-        }
+private fun Separator(text: String, height: Dp) {
+    Box(Modifier.height(height).widthIn(min = 12.dp), contentAlignment = Alignment.Center) {
+        Text(text, fontSize = 22.sp, modifier = Modifier.semantics { contentDescription = "Separador" })
     }
 }
 
 @Composable
-fun DropSlotComposable(
+internal fun DropSlotComposable(
     slot: PieceSlot,
-    width: androidx.compose.ui.unit.Dp,
-    height: androidx.compose.ui.unit.Dp,
+    width: Dp,
+    height: Dp,
     label: String,
-    onItemDropped: (PieceItem) -> Unit
+    enabled: Boolean,
+    viewport: Rect
 ) {
-    val dragAndDropState = LocalDragAndDropState.current
-    var bounds by remember { mutableStateOf(Rect.Zero) }
-
-    DisposableEffect(slot.id) {
-        onDispose { dragAndDropState.unregisterTarget(slot.id) }
+    val drag = LocalDragAndDropState.current
+    val owner = remember(slot.id) { Any() }
+    var bounds by remember(slot.id) { mutableStateOf(Rect.Zero) }
+    SideEffect {
+        if (enabled && bounds.overlaps(viewport)) drag.registerTarget(slot.id, bounds.intersect(viewport), owner)
+        else drag.unregisterTarget(slot.id, owner)
     }
-
-    val isFilled = slot.placedPiece != null
-    val dashEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-
+    DisposableEffect(slot.id, owner) { onDispose { drag.unregisterTarget(slot.id, owner) } }
+    val placed = slot.placedPiece
+    val focused = enabled && drag.isDragging && bounds.intersect(viewport).contains(drag.currentDragAbsolutePosition)
+    val border = when { placed != null -> SuccessColor; focused -> ConsonantColor; else -> TargetBorder }
     Box(
-        modifier = Modifier
-            .size(width = width, height = height)
-            .onGloballyPositioned {
-                bounds = it.boundsInWindow()
-                dragAndDropState.registerTarget(slot.id, bounds)
+        Modifier.size(width, height).testTag("slot_${slot.id}").onGloballyPositioned { bounds = it.boundsInWindow() }
+            .background(if (focused) ActiveTargetFill else TargetFill, RoundedCornerShape(16.dp))
+            .drawBehind {
+                val stroke = 2.dp.toPx()
+                drawRoundRect(
+                    color = border,
+                    topLeft = Offset(stroke / 2, stroke / 2),
+                    size = Size(size.width - stroke, size.height - stroke),
+                    cornerRadius = CornerRadius(16.dp.toPx()),
+                    style = Stroke(stroke, pathEffect = if (placed == null && !focused) PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx())) else null)
+                )
             }
-            .background(if (isFilled) MaterialTheme.colorScheme.surface else Color.Transparent, RoundedCornerShape(12.dp))
-            .then(
-                if (isFilled) Modifier.border(2.dp, Color.LightGray.copy(alpha=0.5f), RoundedCornerShape(12.dp))
-                else Modifier.border(2.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-            ),
+            .semantics(mergeDescendants = true) {
+                contentDescription = if (placed == null) "Espacio $label vacío" else "Espacio $label: ${placed.text}, completado"
+            },
         contentAlignment = Alignment.Center
     ) {
-        if (isFilled) {
-            Text(
-                text = buildPieceAnnotatedString(slot.placedPiece!!.text),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
+        if (placed != null) {
+            Text(buildPieceAnnotatedString(placed.text), fontSize = 30.sp, lineHeight = 40.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         } else {
-            // Dibujar el borde punteado y la etiqueta si está vacío
-            Box(
-                modifier = Modifier.matchParentSize().border(2.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-            )
-            Text(
-                text = label,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            )
-            Divider(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(top = 24.dp)
-                    .width(16.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                thickness = 2.dp
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(label, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("_", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun DraggablePieceComposable(
+private fun DraggablePieceComposable(
     piece: PieceItem,
-    width: androidx.compose.ui.unit.Dp,
-    height: androidx.compose.ui.unit.Dp,
-    viewModel: GameViewModel,
-    ttsManager: TrazavozTtsManager
+    width: Dp,
+    height: Dp,
+    enabled: Boolean,
+    viewModel: GameViewModel
 ) {
-    val dragAndDropState = LocalDragAndDropState.current
-    var positionInWindow by remember { mutableStateOf(Offset.Zero) }
-
-    val isPlaced = piece.isPlaced
-    val isBeingDragged = dragAndDropState.isDragging && dragAndDropState.dragItem == piece
-
-    ElevatedCard(
-        modifier = Modifier
-            .size(width = width, height = height)
-            .alpha(if (isPlaced || isBeingDragged) 0f else 1f)
-            .onGloballyPositioned { positionInWindow = it.boundsInWindow().center }
-            .pointerInput(isPlaced) {
-                if (isPlaced) return@pointerInput
+    val drag = LocalDragAndDropState.current
+    var center by remember(piece.id) { mutableStateOf(Offset.Zero) }
+    val lifted = (drag.dragItem as? GameDragPiece)?.piece?.id == piece.id && drag.isDragging
+    val available = enabled && !piece.isPlaced
+    PieceTile(
+        piece.text,
+        Modifier.size(width, height).testTag("piece_${piece.id}").alpha(if (piece.isPlaced || lifted) 0f else 1f)
+            .onGloballyPositioned { center = it.boundsInWindow().center }
+            .pointerInput(piece.id, available, width, height) {
+                if (!available) return@pointerInput
                 detectDragGestures(
-                    onDragStart = {
-                        dragAndDropState.onDragStart(piece, positionInWindow)
-                    },
-                    onDragEnd = {
-                        val target = dragAndDropState.onDragEnd()
-                        if (target is String) {
-                            viewModel.onItemDropped(piece, target)
-                        }
-                    },
-                    onDragCancel = {
-                        dragAndDropState.isDragging = false
-                        dragAndDropState.dragItem = null
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        dragAndDropState.onDrag(dragAmount)
-                    }
+                    onDragStart = { drag.onDragStart(GameDragPiece(piece, width, height), center) },
+                    onDragEnd = { (drag.onDragEnd() as? String)?.let { viewModel.onItemDropped(piece, it) } },
+                    onDragCancel = drag::cancelDrag,
+                    onDrag = { change, amount -> change.consume(); drag.onDrag(amount) }
                 )
             }
-            .clickable(enabled = !isPlaced) {
-                // Alternativa de accesibilidad o para escuchar
-                if (piece.text.length == 1) ttsManager.hablarLetra(piece.text.first())
-                else ttsManager.hablarSilaba(piece.text)
+            .semantics {
+                if (piece.isPlaced) invisibleToUser()
+                contentDescription = "Ficha ${piece.text}"
+                stateDescription = if (available) "Arrastra la ficha a un espacio" else "No disponible"
             },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+        selected = false
+    )
+}
+
+@Composable
+private fun PieceTile(text: String, modifier: Modifier, selected: Boolean) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(if (selected) 2.dp else 1.dp, if (selected) ConsonantColor else TileBorder),
+        shadowElevation = if (selected) 6.dp else 2.dp
     ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = buildPieceAnnotatedString(piece.text),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.ExtraBold,
-                textAlign = TextAlign.Center
-            )
+        Box(Modifier.fillMaxSize().padding(4.dp), contentAlignment = Alignment.Center) {
+            Text(buildPieceAnnotatedString(text), fontSize = 30.sp, lineHeight = 40.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CompletionPanel(
-    wordText: String,
-    onReplayClick: () -> Unit,
-    onBackClick: () -> Unit
-) {
+private fun CompletionPanel(state: GameUiState, compact: Boolean, onReplay: () -> Unit, onBack: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = "¡Excelente!",
-            fontSize = 36.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Armaste la palabra: $wordText",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-            Button(onClick = onReplayClick) {
-                Icon(Icons.Filled.Replay, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Jugar de nuevo")
-            }
-            OutlinedButton(onClick = onBackClick) {
-                Icon(Icons.Filled.Home, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Volver al inicio")
-            }
+        Text("¡Excelente!", fontSize = if (compact) 26.sp else 36.sp, fontWeight = FontWeight.Bold, color = SuccessColor,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+        Text("Armaste la palabra: ${state.word?.text.orEmpty()}", textAlign = TextAlign.Center)
+        state.saveError?.let { Text(it, Modifier.padding(top = 8.dp).semantics { liveRegion = LiveRegionMode.Polite }, textAlign = TextAlign.Center) }
+        Spacer(Modifier.height(16.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onReplay, modifier = Modifier.heightIn(min = 48.dp)) { Text("Jugar de nuevo") }
+            OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Salir") }
         }
     }
 }
 
-fun buildPieceAnnotatedString(text: String): AnnotatedString {
-    return buildAnnotatedString {
-        text.forEach { char ->
-            val isVowel = char.uppercaseChar() in listOf('A', 'E', 'I', 'O', 'U', 'Á', 'É', 'Í', 'Ó', 'Ú', 'Ü')
-            withStyle(SpanStyle(color = if (isVowel) VowelColor else ConsonantColor)) {
-                append(char.toString())
-            }
-        }
+@Composable
+private fun MessagePanel(message: String, onRetry: () -> Unit, onBack: () -> Unit) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Text(message, textAlign = TextAlign.Center, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+        Button(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Reintentar") }
+        OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Volver") }
     }
 }

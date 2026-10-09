@@ -2,11 +2,16 @@ package com.trazavoz.ui.game
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.trazavoz.domain.model.Word
 import com.trazavoz.domain.repository.ProgressRepository
 import com.trazavoz.domain.repository.WordRepository
-import com.trazavoz.ui.audio.TrazavozTtsManager
+import com.trazavoz.domain.usecase.PrepareReadingWordUseCase
+import com.trazavoz.domain.usecase.ReadingUnit
+import com.trazavoz.domain.usecase.ReadingWord
+import com.trazavoz.ui.audio.GameAudio
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,131 +25,127 @@ import javax.inject.Inject
 class GameViewModel @Inject constructor(
     private val wordRepository: WordRepository,
     private val progressRepository: ProgressRepository,
-    private val ttsManager: TrazavozTtsManager
+    private val audio: GameAudio,
+    private val prepareWord: PrepareReadingWordUseCase
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
+    private var gameJob: Job? = null
+    private var readingWord: ReadingWord? = null
 
     fun startNewGame(wordId: Int) {
-        viewModelScope.launch {
-            _uiState.value = GameUiState(currentPhase = GamePhase.LOADING)
-            val word = wordRepository.getWordById(wordId)
-            
-            if (word == null || word.syllables.isEmpty()) {
-                _uiState.update { it.copy(currentPhase = GamePhase.ERROR) }
-                return@launch
+        gameJob?.cancel()
+        audio.stop()
+        readingWord = null
+        val session = UUID.randomUUID().toString()
+        _uiState.value = GameUiState(sessionId = session)
+        gameJob = viewModelScope.launch {
+            try {
+                val word = wordRepository.getWordById(wordId)
+                val prepared = word?.let(prepareWord::invoke)
+                if (_uiState.value.sessionId != session) return@launch
+                if (word == null || prepared == null) {
+                    _uiState.update { it.copy(currentPhase = GamePhase.ERROR, errorMessage = "No pudimos preparar esta palabra. Puedes volver o reintentar.") }
+                    return@launch
+                }
+                readingWord = prepared
+                _uiState.value = GameUiState(
+                    sessionId = session,
+                    word = word.copy(text = prepared.displayText),
+                    trailingSeparator = prepared.trailingSeparator
+                ).withBoard(GamePhase.SYLLABLES, prepared.syllables)
+                audio.speakWord(prepared.displayText)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (_uiState.value.sessionId == session) {
+                    _uiState.update { it.copy(currentPhase = GamePhase.ERROR, errorMessage = "No pudimos cargar esta palabra. Puedes volver o reintentar.") }
+                }
             }
-            
-            // Fase inicial: Sílabas
-            val targetSlots = word.syllables.mapIndexed { index, syllable ->
-                PieceSlot(id = "syl_$index", expectedText = syllable.uppercase())
-            }
-            
-            val pieces = word.syllables.map { syllable ->
-                PieceItem(id = UUID.randomUUID().toString(), text = syllable.uppercase())
-            }.shuffled()
-            
-            _uiState.value = GameUiState(
-                word = word,
-                currentPhase = GamePhase.SYLLABLES,
-                piecesToPlace = pieces,
-                targetSlots = targetSlots
-            )
-            
-            ttsManager.hablarPalabra(word.text)
         }
+    }
+
+    fun speakReference() {
+        val state = _uiState.value
+        // Do not interrupt the sequence that controls the partial-success transition.
+        if (state.currentPhase != GamePhase.SYLLABLES_SUCCESS) state.word?.let { audio.speakWord(it.text) }
     }
 
     fun onItemDropped(piece: PieceItem, slotId: String) {
-        val currentState = _uiState.value
-        // Ignorar eventos si no estamos en fase activa de juego
-        if (currentState.currentPhase != GamePhase.SYLLABLES && currentState.currentPhase != GamePhase.LETTERS) return
-        
-        val slot = currentState.targetSlots.find { it.id == slotId } ?: return
-        
-        if (slot.expectedText == piece.text && slot.placedPiece == null) {
-            val updatedSlots = currentState.targetSlots.map { s ->
-                if (s.id == slotId) s.copy(placedPiece = piece) else s
-            }
-            
-            val updatedPieces = currentState.piecesToPlace.map { p ->
-                if (p.id == piece.id) p.copy(isPlaced = true) else p
-            }
-            
-            // Feedback de audio según tipo de pieza
-            if (piece.text.length == 1) {
-                ttsManager.hablarLetra(piece.text.first())
-            } else {
-                ttsManager.hablarSilaba(piece.text)
-            }
-            
-            _uiState.update { it.copy(targetSlots = updatedSlots, piecesToPlace = updatedPieces) }
-            checkPhaseCompletion()
-        } else {
-            // Error
-            if (piece.text.length == 1) {
-                ttsManager.hablarLetra(piece.text.first())
-            } else {
-                ttsManager.hablarSilaba(piece.text)
-            }
+        val state = _uiState.value
+        if (!state.isInteractive) return
+        val available = state.piecesToPlace.find { it.id == piece.id && !it.isPlaced } ?: return
+        if (available.text != piece.text) return
+        val slot = state.targetSlots.find { it.id == slotId } ?: return
+        if (slot.placedPiece != null || slot.expectedText != available.text) {
             _uiState.update { it.copy(errorsCount = it.errorsCount + 1) }
+            return
         }
-    }
-
-    private fun checkPhaseCompletion() {
-        val currentState = _uiState.value
-        val allSlotsFilled = currentState.targetSlots.all { it.placedPiece != null }
-        
-        if (allSlotsFilled) {
-            when (currentState.currentPhase) {
-                GamePhase.SYLLABLES -> {
-                    viewModelScope.launch {
-                        _uiState.update { it.copy(currentPhase = GamePhase.SYLLABLES_SUCCESS) }
-                        ttsManager.hablarPalabra(currentState.word?.text ?: "")
-                        delay(1200) // Esperar 1.2s para la transición suave
-                        prepareLettersPhase()
+        val updated = state.copy(
+            targetSlots = state.targetSlots.map { if (it.id == slotId) it.copy(placedPiece = available) else it },
+            piecesToPlace = state.piecesToPlace.map { if (it.id == available.id) it.copy(isPlaced = true) else it }
+        )
+        val complete = updated.targetSlots.isNotEmpty() && updated.targetSlots.all { it.placedPiece != null }
+        if (!complete) {
+            _uiState.value = updated
+            audio.speakPiece(available.text, state.currentPhase == GamePhase.SYLLABLES)
+            return
+        }
+        if (state.currentPhase == GamePhase.SYLLABLES) {
+            // Set the phase synchronously: repeated drop callbacks cannot launch two transitions.
+            _uiState.value = updated.copy(currentPhase = GamePhase.SYLLABLES_SUCCESS)
+            gameJob = viewModelScope.launch {
+                coroutineScope {
+                    val speech = launch { audio.speakSequenceAndAwait(listOf(available.text, updated.word.orEmptyText())) }
+                    delay(1000)
+                    speech.join()
+                }
+                val current = _uiState.value
+                if (current.sessionId == updated.sessionId && current.currentPhase == GamePhase.SYLLABLES_SUCCESS) {
+                    readingWord?.let { _uiState.value = current.withBoard(GamePhase.LETTERS, it.letters) }
+                }
+            }
+        } else {
+            _uiState.value = updated.copy(currentPhase = GamePhase.COMPLETED)
+            gameJob = viewModelScope.launch {
+                audio.speakSequenceAndAwait(listOf(available.text, updated.word.orEmptyText()))
+            }
+            // Saving an already completed attempt is independent of replay/audio cancellation.
+            viewModelScope.launch {
+                try {
+                    updated.word?.let { progressRepository.insertLog(it.id, updated.errorsCount, true) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    if (_uiState.value.sessionId == updated.sessionId) {
+                        _uiState.update { it.copy(saveError = "Completaste la palabra, pero no pudimos guardar el progreso.") }
                     }
                 }
-                GamePhase.LETTERS -> {
-                    _uiState.update { it.copy(currentPhase = GamePhase.COMPLETED, showCelebration = true) }
-                    viewModelScope.launch {
-                        ttsManager.hablarPalabra(currentState.word?.text ?: "")
-                        currentState.word?.let { word ->
-                            progressRepository.insertLog(
-                                wordId = word.id,
-                                errorsCount = currentState.errorsCount,
-                                isCompleted = true
-                            )
-                        }
-                    }
-                }
-                else -> {}
             }
         }
     }
 
-    private fun prepareLettersPhase() {
-        val word = _uiState.value.word ?: return
-        
-        // Excluimos espacios del array de piezas arrastrables, pero mantenemos su índice para UI si fuera necesario
-        // Para simplificar según el plan: validamos el texto jugable
-        val textNoSpaces = word.text.replace(" ", "")
-        
-        val targetSlots = textNoSpaces.mapIndexed { index, char ->
-            PieceSlot(id = "let_$index", expectedText = char.uppercase())
-        }
-        
-        val pieces = textNoSpaces.map { char ->
-            PieceItem(id = UUID.randomUUID().toString(), text = char.uppercase())
-        }.shuffled()
-        
-        _uiState.update {
-            it.copy(
-                currentPhase = GamePhase.LETTERS,
-                targetSlots = targetSlots,
-                piecesToPlace = pieces
-            )
-        }
+    fun leaveGame() {
+        gameJob?.cancel()
+        gameJob = null
+        readingWord = null
+        audio.stop()
+        _uiState.value = GameUiState()
     }
+
+    override fun onCleared() {
+        gameJob?.cancel()
+        audio.stop()
+        super.onCleared()
+    }
+
+    private fun GameUiState.withBoard(phase: GamePhase, units: List<ReadingUnit>): GameUiState = copy(
+        currentPhase = phase,
+        targetSlots = units.mapIndexed { index, unit ->
+            PieceSlot("${sessionId}_${phase}_$index", unit.text, unit.separatorBefore)
+        },
+        piecesToPlace = units.map { PieceItem(UUID.randomUUID().toString(), it.text) }.shuffled()
+    )
+
+    private fun com.trazavoz.domain.model.Word?.orEmptyText(): String = this?.text.orEmpty()
 }

@@ -1,0 +1,10 @@
+Lexend font source: https://github.com/google/fonts/tree/main/ofl/lexend
+Downloaded variable font: Lexend[wght].ttf
+License: SIL Open Font License 1.1 (see lexend-OFL.txt in this directory).
+
+The bundled lexend_regular.ttf, lexend_semibold.ttf and lexend_bold.ttf
+are static instances at wght=400, 600 and 700, generated with
+fontTools.varLib.instancer.instantiateVariableFont. Static instances allow
+real weights on Android 24/25 as well as newer versions.
+
+These font files remain under the SIL OFL, not the application's GPL license.

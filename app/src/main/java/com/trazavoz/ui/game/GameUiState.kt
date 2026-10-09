@@ -2,23 +2,32 @@ package com.trazavoz.ui.game
 
 import com.trazavoz.domain.model.Word
 
+enum class GamePhase {
+    LOADING,
+    SYLLABLES,
+    SYLLABLES_SUCCESS, // Confirmación parcial
+    LETTERS,
+    COMPLETED,
+    ERROR
+}
+
 data class GameUiState(
     val word: Word? = null,
-    val lettersToPlace: List<LetterItem> = emptyList(),
-    val targetSlots: List<SlotItem> = emptyList(),
+    val currentPhase: GamePhase = GamePhase.LOADING,
+    val piecesToPlace: List<PieceItem> = emptyList(),
+    val targetSlots: List<PieceSlot> = emptyList(),
     val errorsCount: Int = 0,
-    val isCompleted: Boolean = false,
     val showCelebration: Boolean = false
 )
 
-data class LetterItem(
+data class PieceItem(
     val id: String,
-    val char: Char,
+    val text: String,
     val isPlaced: Boolean = false
 )
 
-data class SlotItem(
-    val index: Int,
-    val expectedChar: Char,
-    val placedLetter: LetterItem? = null
+data class PieceSlot(
+    val id: String, // Identificador único por fase e índice para DragAndDrop
+    val expectedText: String,
+    val placedPiece: PieceItem? = null
 )

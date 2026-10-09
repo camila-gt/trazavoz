@@ -136,8 +136,8 @@ fun GameScreen(
                                 slot = slot,
                                 slotSize = slotSize,
                                 fontSize = slotFontSize,
-                                onLetterDropped = { letter ->
-                                    viewModel.onLetterDropped(letter, idx)
+                                onItemDropped = { letter ->
+                                    viewModel.onItemDropped(letter, slot.id)
                                 }
                             )
                         }
@@ -159,9 +159,9 @@ fun GameScreen(
                     horizontalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    uiState.lettersToPlace.forEach { letter ->
+                    uiState.piecesToPlace.forEach { letter ->
                         DraggableLetterComposable(
-                            letter = letter,
+                            piece = letter,
                             letterSize = letterSize,
                             fontSize = slotFontSize,
                             viewModel = viewModel
@@ -171,8 +171,8 @@ fun GameScreen(
             }
         }
 
-        if (dragState.isDragging && dragState.dragItem is LetterItem) {
-            val draggedLetter = dragState.dragItem as LetterItem
+        if (dragState.isDragging && dragState.dragItem is PieceItem) {
+            val draggedpiece = dragState.dragItem as PieceItem
             val density = LocalDensity.current
             val localPos = dragState.currentDragLocalPosition
             val halfSize = with(density) { letterSize.toPx() / 2f }
@@ -188,14 +188,14 @@ fun GameScreen(
                     }
                     .alpha(0.85f),
                 shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.elevatedCardColors(containerColor = colorForLetter(draggedLetter.char))
+                colors = CardDefaults.elevatedCardColors(containerColor = colorForLetter(draggedpiece.text))
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = draggedLetter.char.toString(),
+                        text = draggedpiece.text,
                         fontSize = slotFontSize,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onBackground,
@@ -280,17 +280,17 @@ fun WordImageAndSyllables(
 
 @Composable
 fun DropSlotComposable(
-    slot: SlotItem,
+    slot: PieceSlot,
     slotSize: androidx.compose.ui.unit.Dp = 80.dp,
     fontSize: androidx.compose.ui.unit.TextUnit = 36.sp,
-    onLetterDropped: (LetterItem) -> Unit
+    onItemDropped: (PieceItem) -> Unit
 ) {
     val dragAndDropState = LocalDragAndDropState.current
     var bounds by remember { mutableStateOf(Rect.Zero) }
 
-    DisposableEffect(slot.index) {
+    DisposableEffect(slot.id) {
         onDispose {
-            dragAndDropState.unregisterTarget(slot.index)
+            dragAndDropState.unregisterTarget(slot.id)
         }
     }
 
@@ -299,24 +299,24 @@ fun DropSlotComposable(
             .size(slotSize)
             .onGloballyPositioned {
                 bounds = it.boundsInWindow()
-                dragAndDropState.registerTarget(slot.index, bounds)
+                dragAndDropState.registerTarget(slot.id, bounds)
             }
             .clip(MaterialTheme.shapes.medium)
             .background(
-                if (slot.placedLetter != null) colorForLetter(slot.placedLetter.char) else Color.LightGray.copy(
+                if (slot.placedPiece != null) colorForLetter(slot.placedPiece.char) else Color.LightGray.copy(
                     alpha = 0.4f
                 )
             )
             .border(
                 width = 3.dp,
-                color = if (slot.placedLetter != null) colorForLetter(slot.placedLetter.char) else MaterialTheme.colorScheme.outline,
+                color = if (slot.placedPiece != null) colorForLetter(slot.placedPiece.char) else MaterialTheme.colorScheme.outline,
                 shape = MaterialTheme.shapes.medium
             ),
         contentAlignment = Alignment.Center
     ) {
-        if (slot.placedLetter != null) {
+        if (slot.placedPiece != null) {
             Text(
-                text = slot.placedLetter.char.toString(),
+                text = slot.placedPiece.char.toString(),
                 fontSize = fontSize,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -335,7 +335,7 @@ fun DropSlotComposable(
 
 @Composable
 fun DraggableLetterComposable(
-    letter: LetterItem,
+    piece: PieceItem,
     letterSize: androidx.compose.ui.unit.Dp = 80.dp,
     fontSize: androidx.compose.ui.unit.TextUnit = 36.sp,
     viewModel: GameViewModel
@@ -362,8 +362,8 @@ fun DraggableLetterComposable(
                     },
                     onDragEnd = {
                         val target = dragAndDropState.onDragEnd()
-                        if (target is Int) {
-                            viewModel.onLetterDropped(letter, target)
+                        if (target is String) {
+                            viewModel.onItemDropped(letter, target)
                         }
                     },
                     onDragCancel = {
@@ -377,14 +377,14 @@ fun DraggableLetterComposable(
                 )
             },
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.elevatedCardColors(containerColor = colorForLetter(letter.char))
+        colors = CardDefaults.elevatedCardColors(containerColor = colorForLetter(piece.text.first()))
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = letter.char.toString(),
+                text = piece.text,
                 fontSize = fontSize,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground,

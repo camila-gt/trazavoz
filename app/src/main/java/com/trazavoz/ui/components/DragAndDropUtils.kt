@@ -16,14 +16,23 @@ class DragAndDropState {
     var dragPosition by mutableStateOf(Offset.Zero)
     var containerOffset by mutableStateOf(Offset.Zero)
 
-    private val dropTargets = mutableMapOf<Any, Rect>()
+    private data class Target(val bounds: Rect, val owner: Any)
+    private val dropTargets = mutableMapOf<Any, Target>()
 
-    fun registerTarget(id: Any, bounds: Rect) {
-        dropTargets[id] = bounds
+    fun registerTarget(id: Any, bounds: Rect, owner: Any = id) {
+        dropTargets[id] = Target(bounds, owner)
     }
 
-    fun unregisterTarget(id: Any) {
-        dropTargets.remove(id)
+    fun unregisterTarget(id: Any, owner: Any = id) {
+        // An outgoing AnimatedContent node must never remove its replacement's target.
+        if (dropTargets[id]?.owner == owner) dropTargets.remove(id)
+    }
+
+    fun cancelDrag() {
+        isDragging = false
+        dragItem = null
+        dragOffset = Offset.Zero
+        dragPosition = Offset.Zero
     }
 
     fun onDrag(offset: Offset) {
@@ -40,8 +49,8 @@ class DragAndDropState {
     fun onDragEnd(): Any? {
         isDragging = false
         val absolutePos = dragPosition + dragOffset
-        val target = dropTargets.entries.firstOrNull { it.value.contains(absolutePos) }?.key
-        dragItem = null
+        val target = dropTargets.entries.firstOrNull { it.value.bounds.contains(absolutePos) }?.key
+        cancelDrag()
         return target
     }
 

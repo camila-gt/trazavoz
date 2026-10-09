@@ -1,8 +1,10 @@
 package com.trazavoz.ui.game
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,46 +12,49 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Replay
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.trazavoz.domain.model.Word
 import com.trazavoz.ui.audio.TrazavozTtsManager
-import com.trazavoz.ui.components.ConfettiOverlay
 import com.trazavoz.ui.components.DragAndDropContainer
-import com.trazavoz.ui.components.DragAndDropState
 import com.trazavoz.ui.components.LocalDragAndDropState
 import com.trazavoz.ui.components.LockLandscapeOrientation
 import com.trazavoz.ui.components.ScreenHeader
-import com.trazavoz.ui.theme.colorForLetter
 import com.trazavoz.ui.theme.rememberWindowInfo
-import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.math.roundToInt
+
+// Colores fijos para vocales y consonantes (texto)
+val VowelColor = Color(0xFFD32F2F)
+val ConsonantColor = Color(0xFF1976D2)
 
 @Composable
 fun GameScreen(
@@ -63,21 +68,7 @@ fun GameScreen(
     LockLandscapeOrientation()
 
     val windowInfo = rememberWindowInfo()
-    val screenHeight = windowInfo.screenHeightDp
     val isCompact = windowInfo.isCompactHeight
-
-    // La pantalla está bloqueada en horizontal (ver LockLandscapeOrientation):
-    // isCompact distingue teléfono (alto reducido) de tablet (alto amplio).
-    val imageSize = if (isCompact) min(screenHeight * 0.4f, 160.dp) else 220.dp
-    val slotSize = if (isCompact) min(screenHeight * 0.18f, 60.dp) else 80.dp
-    val letterSize = if (isCompact) min(screenHeight * 0.18f, 60.dp) else 80.dp
-    val letterTrayHeight = if (isCompact) min(screenHeight * 0.22f, 80.dp) else 110.dp
-    val slotFontSize = if (isCompact) 24.sp else 36.sp
-    val syllableBtnHeight = if (isCompact) 40.dp else 60.dp
-    val syllableFontSize = if (isCompact) 16.sp else 22.sp
-    val headerBtnHeight = if (isCompact) 44.dp else 60.dp
-    val headerBtnWidth = if (isCompact) 90.dp else 120.dp
-    val padding = if (isCompact) 8.dp else 16.dp
 
     LaunchedEffect(wordId) {
         viewModel.startNewGame(wordId)
@@ -89,190 +80,266 @@ fun GameScreen(
             .background(MaterialTheme.colorScheme.background)
     ) { dragState ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            verticalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.fillMaxSize()
         ) {
             ScreenHeader(
-                title = "¡Arma la palabra!",
+                title = when (uiState.currentPhase) {
+                    GamePhase.SYLLABLES, GamePhase.SYLLABLES_SUCCESS -> "FASE 1: SÍLABAS"
+                    GamePhase.LETTERS, GamePhase.COMPLETED -> "FASE 2: LETRAS INDIVIDUALES"
+                    else -> "Cargando..."
+                },
                 onBackClick = onBackClick,
-                windowInfo = windowInfo,
-                trailing = {
-                    Box(
-                        modifier = Modifier
-                            .size(height = headerBtnHeight, width = headerBtnWidth)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.tertiary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "⭐ ${uiState.errorsCount}",
-                            fontSize = if (isCompact) 16.sp else 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onTertiary
-                        )
-                    }
-                }
+                windowInfo = windowInfo
             )
 
-            uiState.word?.let { word ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(vertical = if (isCompact) 4.dp else 16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    WordImageAndSyllables(word, imageSize, syllableBtnHeight, syllableFontSize, ttsManager, isCompact)
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        uiState.targetSlots.forEachIndexed { idx, slot ->
-                            DropSlotComposable(
-                                slot = slot,
-                                slotSize = slotSize,
-                                fontSize = slotFontSize,
-                                onItemDropped = { letter ->
-                                    viewModel.onItemDropped(letter, slot.id)
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(letterTrayHeight)
-                    .clip(MaterialTheme.shapes.large)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(if (isCompact) 4.dp else 8.dp),
-                contentAlignment = Alignment.Center
+                    .weight(1f)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // Panel Izquierdo: Ancla visual (Imagen y Palabra estática)
+                Box(
+                    modifier = Modifier
+                        .weight(0.28f)
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    uiState.piecesToPlace.forEach { letter ->
-                        DraggableLetterComposable(
-                            piece = letter,
-                            letterSize = letterSize,
-                            fontSize = slotFontSize,
-                            viewModel = viewModel
-                        )
+                    uiState.word?.let { word ->
+                        LeftAnchorPanel(word = word, ttsManager = ttsManager, isCompact = isCompact)
+                    }
+                }
+
+                // Panel Derecho: Zona de acción (Huecos y Fichas)
+                Box(
+                    modifier = Modifier
+                        .weight(0.72f)
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AnimatedContent(
+                        targetState = uiState.currentPhase,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(600)) togetherWith fadeOut(animationSpec = tween(600))
+                        },
+                        label = "game_phase_transition"
+                    ) { phase ->
+                        when (phase) {
+                            GamePhase.SYLLABLES, GamePhase.SYLLABLES_SUCCESS, GamePhase.LETTERS -> {
+                                ActionAreaPanel(
+                                    uiState = uiState,
+                                    viewModel = viewModel,
+                                    ttsManager = ttsManager,
+                                    isCompact = isCompact,
+                                    phase = phase
+                                )
+                            }
+                            GamePhase.COMPLETED -> {
+                                CompletionPanel(
+                                    wordText = uiState.word?.text ?: "",
+                                    onReplayClick = { viewModel.startNewGame(wordId) },
+                                    onBackClick = onBackClick
+                                )
+                            }
+                            GamePhase.ERROR -> {
+                                Text("Error al cargar la palabra.", fontSize = 24.sp, color = MaterialTheme.colorScheme.error)
+                            }
+                            else -> {}
+                        }
                     }
                 }
             }
         }
 
+        // Ficha flotante al arrastrar
         if (dragState.isDragging && dragState.dragItem is PieceItem) {
-            val draggedpiece = dragState.dragItem as PieceItem
+            val draggedPiece = dragState.dragItem as PieceItem
             val density = LocalDensity.current
             val localPos = dragState.currentDragLocalPosition
-            val halfSize = with(density) { letterSize.toPx() / 2f }
+            val pieceWidth = if (uiState.currentPhase == GamePhase.SYLLABLES) 120.dp else 80.dp
+            val pieceHeight = 80.dp
+            
+            val halfWidth = with(density) { pieceWidth.toPx() / 2f }
+            val halfHeight = with(density) { pieceHeight.toPx() / 2f }
 
             ElevatedCard(
                 modifier = Modifier
-                    .size(letterSize)
+                    .size(width = pieceWidth, height = pieceHeight)
                     .offset {
                         IntOffset(
-                            (localPos.x - halfSize).roundToInt(),
-                            (localPos.y - halfSize).roundToInt()
+                            (localPos.x - halfWidth).roundToInt(),
+                            (localPos.y - halfHeight).roundToInt()
                         )
                     }
                     .alpha(0.85f),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.elevatedCardColors(containerColor = colorForLetter(draggedpiece.text))
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        text = draggedpiece.text,
-                        fontSize = slotFontSize,
+                        text = buildPieceAnnotatedString(draggedPiece.text),
+                        fontSize = 36.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onBackground,
                         textAlign = TextAlign.Center
                     )
                 }
             }
         }
+    }
+}
 
-        if (uiState.showCelebration) {
-            CelebrationDialog(
-                wordText = uiState.word?.text ?: "",
-                onBackClick = onBackClick,
-                onReplayClick = {
-                    viewModel.startNewGame(uiState.word?.id ?: 0)
-                }
+@Composable
+fun LeftAnchorPanel(
+    word: Word,
+    ttsManager: TrazavozTtsManager,
+    isCompact: Boolean
+) {
+    val imageSize = if (isCompact) 140.dp else 200.dp
+    
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(imageSize)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { ttsManager.hablarPalabra(word.text) },
+                contentAlignment = Alignment.Center
+            ) {
+                val imageSource = if (word.localImagePath != null) File(word.localImagePath) else word.imageUrl
+                AsyncImage(
+                    model = imageSource,
+                    contentDescription = "Toca para escuchar",
+                    modifier = Modifier.fillMaxSize().padding(8.dp)
+                )
+                // Ícono de altavoz sutil
+                Icon(
+                    imageVector = Icons.Filled.VolumeUp,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp)
+                        .background(Color.White.copy(alpha = 0.7f), shape = RoundedCornerShape(50))
+                        .padding(4.dp),
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = word.text.uppercase(),
+                fontSize = if (isCompact) 32.sp else 42.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+            
+            Text(
+                text = "Toca la imagen para escuchar",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
     }
 }
 
 @Composable
-fun WordImageAndSyllables(
-    word: com.trazavoz.domain.model.Word,
-    imageSize: androidx.compose.ui.unit.Dp,
-    syllableBtnHeight: androidx.compose.ui.unit.Dp,
-    syllableFontSize: androidx.compose.ui.unit.TextUnit,
+fun ActionAreaPanel(
+    uiState: GameUiState,
+    viewModel: GameViewModel,
     ttsManager: TrazavozTtsManager,
-    isCompact: Boolean
+    isCompact: Boolean,
+    phase: GamePhase
 ) {
+    val isSyllablePhase = phase == GamePhase.SYLLABLES || phase == GamePhase.SYLLABLES_SUCCESS
+    val titleText = if (isSyllablePhase) "Arrastra las sílabas a los espacios vacíos" else "Ordena las letras para formar la palabra"
+    
+    val slotWidth = if (isSyllablePhase) (if(isCompact) 100.dp else 140.dp) else (if(isCompact) 60.dp else 80.dp)
+    val slotHeight = if (isCompact) 70.dp else 90.dp
+
     Column(
+        modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        ElevatedCard(
-            modifier = Modifier
-                .size(imageSize)
-                .border(4.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.large),
-            shape = MaterialTheme.shapes.large
+        Text(
+            text = titleText,
+            fontSize = if (isCompact) 18.sp else 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        
+        // ZONA DE HUECOS
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                val imageSource = if (word.localImagePath != null) {
-                    File(word.localImagePath)
-                } else {
-                    word.imageUrl
-                }
-                AsyncImage(
-                    model = imageSource,
-                    contentDescription = word.text,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp)
+            uiState.targetSlots.forEachIndexed { index, slot ->
+                DropSlotComposable(
+                    slot = slot,
+                    width = slotWidth,
+                    height = slotHeight,
+                    label = (index + 1).toString(),
+                    onItemDropped = { piece -> viewModel.onItemDropped(piece, slot.id) }
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 16.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp)
+        
+        // ZONA DE FICHAS (BANDEJA)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .height(slotHeight + 24.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                .padding(12.dp),
+            contentAlignment = Alignment.Center
         ) {
-            word.syllables.forEach { syllable ->
-                Button(
-                    onClick = { ttsManager.hablarSilaba(syllable) },
-                    modifier = Modifier.height(syllableBtnHeight),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text(
-                        text = syllable,
-                        fontSize = syllableFontSize,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onPrimary
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                uiState.piecesToPlace.forEach { piece ->
+                    DraggablePieceComposable(
+                        piece = piece,
+                        width = slotWidth,
+                        height = slotHeight,
+                        viewModel = viewModel,
+                        ttsManager = ttsManager
                     )
                 }
+            }
+        }
+        
+        // Leyenda de colores
+        Row(
+            modifier = Modifier.padding(bottom = 8.dp, top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(50)).background(ConsonantColor))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Consonantes", fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(50)).background(VowelColor))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Vocales", fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground)
             }
         }
     }
@@ -281,89 +348,93 @@ fun WordImageAndSyllables(
 @Composable
 fun DropSlotComposable(
     slot: PieceSlot,
-    slotSize: androidx.compose.ui.unit.Dp = 80.dp,
-    fontSize: androidx.compose.ui.unit.TextUnit = 36.sp,
+    width: androidx.compose.ui.unit.Dp,
+    height: androidx.compose.ui.unit.Dp,
+    label: String,
     onItemDropped: (PieceItem) -> Unit
 ) {
     val dragAndDropState = LocalDragAndDropState.current
     var bounds by remember { mutableStateOf(Rect.Zero) }
 
     DisposableEffect(slot.id) {
-        onDispose {
-            dragAndDropState.unregisterTarget(slot.id)
-        }
+        onDispose { dragAndDropState.unregisterTarget(slot.id) }
     }
+
+    val isFilled = slot.placedPiece != null
+    val dashEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
 
     Box(
         modifier = Modifier
-            .size(slotSize)
+            .size(width = width, height = height)
             .onGloballyPositioned {
                 bounds = it.boundsInWindow()
                 dragAndDropState.registerTarget(slot.id, bounds)
             }
-            .clip(MaterialTheme.shapes.medium)
-            .background(
-                if (slot.placedPiece != null) colorForLetter(slot.placedPiece.char) else Color.LightGray.copy(
-                    alpha = 0.4f
-                )
-            )
-            .border(
-                width = 3.dp,
-                color = if (slot.placedPiece != null) colorForLetter(slot.placedPiece.char) else MaterialTheme.colorScheme.outline,
-                shape = MaterialTheme.shapes.medium
+            .background(if (isFilled) MaterialTheme.colorScheme.surface else Color.Transparent, RoundedCornerShape(12.dp))
+            .then(
+                if (isFilled) Modifier.border(2.dp, Color.LightGray.copy(alpha=0.5f), RoundedCornerShape(12.dp))
+                else Modifier.border(2.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
             ),
         contentAlignment = Alignment.Center
     ) {
-        if (slot.placedPiece != null) {
+        if (isFilled) {
             Text(
-                text = slot.placedPiece.char.toString(),
-                fontSize = fontSize,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onBackground
+                text = buildPieceAnnotatedString(slot.placedPiece!!.text),
+                fontSize = 32.sp,
+                fontWeight = FontWeight.ExtraBold
             )
         } else {
+            // Dibujar el borde punteado y la etiqueta si está vacío
+            Box(
+                modifier = Modifier.matchParentSize().border(2.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+            )
             Text(
-                text = "_",
-                fontSize = fontSize * 0.9f,
+                text = label,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Divider(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(top = 24.dp)
+                    .width(16.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                thickness = 2.dp
             )
         }
     }
 }
 
 @Composable
-fun DraggableLetterComposable(
+fun DraggablePieceComposable(
     piece: PieceItem,
-    letterSize: androidx.compose.ui.unit.Dp = 80.dp,
-    fontSize: androidx.compose.ui.unit.TextUnit = 36.sp,
-    viewModel: GameViewModel
+    width: androidx.compose.ui.unit.Dp,
+    height: androidx.compose.ui.unit.Dp,
+    viewModel: GameViewModel,
+    ttsManager: TrazavozTtsManager
 ) {
     val dragAndDropState = LocalDragAndDropState.current
-    val coroutineScope = rememberCoroutineScope()
     var positionInWindow by remember { mutableStateOf(Offset.Zero) }
 
-    val isPlaced = letter.isPlaced
-    val isBeingDragged = dragAndDropState.isDragging && dragAndDropState.dragItem == letter
+    val isPlaced = piece.isPlaced
+    val isBeingDragged = dragAndDropState.isDragging && dragAndDropState.dragItem == piece
 
     ElevatedCard(
         modifier = Modifier
-            .size(letterSize)
-            .alpha(if (isPlaced || isBeingDragged) 0.2f else 1f)
-            .onGloballyPositioned {
-                positionInWindow = it.boundsInWindow().center
-            }
+            .size(width = width, height = height)
+            .alpha(if (isPlaced || isBeingDragged) 0f else 1f)
+            .onGloballyPositioned { positionInWindow = it.boundsInWindow().center }
             .pointerInput(isPlaced) {
                 if (isPlaced) return@pointerInput
                 detectDragGestures(
                     onDragStart = {
-                        dragAndDropState.onDragStart(letter, positionInWindow)
+                        dragAndDropState.onDragStart(piece, positionInWindow)
                     },
                     onDragEnd = {
                         val target = dragAndDropState.onDragEnd()
                         if (target is String) {
-                            viewModel.onItemDropped(letter, target)
+                            viewModel.onItemDropped(piece, target)
                         }
                     },
                     onDragCancel = {
@@ -375,19 +446,20 @@ fun DraggableLetterComposable(
                         dragAndDropState.onDrag(dragAmount)
                     }
                 )
+            }
+            .clickable(enabled = !isPlaced) {
+                // Alternativa de accesibilidad o para escuchar
+                if (piece.text.length == 1) ttsManager.hablarLetra(piece.text.first())
+                else ttsManager.hablarSilaba(piece.text)
             },
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.elevatedCardColors(containerColor = colorForLetter(piece.text.first()))
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
-                text = piece.text,
-                fontSize = fontSize,
+                text = buildPieceAnnotatedString(piece.text),
+                fontSize = 32.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
         }
@@ -395,125 +467,51 @@ fun DraggableLetterComposable(
 }
 
 @Composable
-fun CelebrationDialog(
+fun CompletionPanel(
     wordText: String,
-    onBackClick: () -> Unit,
-    onReplayClick: () -> Unit
+    onReplayClick: () -> Unit,
+    onBackClick: () -> Unit
 ) {
-    val windowInfo = rememberWindowInfo()
-    val isCompact = windowInfo.isCompactHeight
-    val starIconSize = when {
-        isCompact -> 26.dp
-        windowInfo.isExpandedWidth -> 44.dp
-        else -> 34.dp
-    }
-    val dialogTitleSize = when {
-        isCompact -> 18.sp
-        windowInfo.isExpandedWidth -> 26.sp
-        else -> 21.sp
-    }
-    val dialogSubtitleSize = when {
-        isCompact -> 14.sp
-        windowInfo.isExpandedWidth -> 18.sp
-        else -> 15.sp
-    }
-    val actionButtonSize = if (isCompact) 56.dp else 64.dp
-    val actionIconSize = if (isCompact) 26.dp else 30.dp
-
-    val entrance = remember { Animatable(0.85f) }
-    LaunchedEffect(Unit) {
-        entrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy))
-    }
-
-    Dialog(
-        onDismissRequest = {},
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            // Confetti cayendo sobre toda la pantalla, detrás de la tarjeta.
-            ConfettiOverlay(modifier = Modifier.fillMaxSize())
+        Text(
+            text = "¡Excelente!",
+            fontSize = 36.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Armaste la palabra: $wordText",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            Button(onClick = onReplayClick) {
+                Icon(Icons.Filled.Replay, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Jugar de nuevo")
+            }
+            OutlinedButton(onClick = onBackClick) {
+                Icon(Icons.Filled.Home, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Volver al inicio")
+            }
+        }
+    }
+}
 
-            ElevatedCard(
-                modifier = Modifier
-                    .fillMaxWidth(if (isCompact) 0.6f else 0.5f)
-                    .widthIn(max = 520.dp)
-                    .padding(if (isCompact) 8.dp else 16.dp)
-                    .scale(entrance.value)
-                    .alpha(entrance.value),
-                shape = MaterialTheme.shapes.extraLarge
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(if (isCompact) 12.dp else 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = if (isCompact) 8.dp else 16.dp)
-                    ) {
-                        Icon(Icons.Filled.Star, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(starIconSize))
-                        Icon(Icons.Filled.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(starIconSize * 1.25f))
-                        Icon(Icons.Filled.Star, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(starIconSize))
-                    }
-
-                    Text(
-                        text = "¡Excelente trabajo!",
-                        fontSize = dialogTitleSize,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(if (isCompact) 4.dp else 8.dp))
-
-                    Text(
-                        text = "Armaste la palabra: $wordText",
-                        fontSize = dialogSubtitleSize,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(if (isCompact) 12.dp else 24.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        FilledIconButton(
-                            onClick = onReplayClick,
-                            modifier = Modifier.size(actionButtonSize),
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Replay,
-                                contentDescription = "Jugar de nuevo",
-                                modifier = Modifier.size(actionIconSize)
-                            )
-                        }
-
-                        FilledIconButton(
-                            onClick = onBackClick,
-                            modifier = Modifier.size(actionButtonSize),
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary,
-                                contentColor = MaterialTheme.colorScheme.onSecondary
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Home,
-                                contentDescription = "Salir al menú",
-                                modifier = Modifier.size(actionIconSize)
-                            )
-                        }
-                    }
-                }
+fun buildPieceAnnotatedString(text: String): AnnotatedString {
+    return buildAnnotatedString {
+        text.forEach { char ->
+            val isVowel = char.uppercaseChar() in listOf('A', 'E', 'I', 'O', 'U', 'Á', 'É', 'Í', 'Ó', 'Ú', 'Ü')
+            withStyle(SpanStyle(color = if (isVowel) VowelColor else ConsonantColor)) {
+                append(char.toString())
             }
         }
     }

@@ -8,11 +8,11 @@ data class SearchResult(val id: Int, val name: String, val imageUrl: String)
 class SearchArasaacUseCase @Inject constructor(
     private val apiService: ArasaacApiService
 ) {
-    suspend operator fun invoke(query: String): List<SearchResult> {
+    suspend operator fun invoke(query: String): Result<List<SearchResult>> {
         val cleanQuery = query.trim().lowercase()
-        if (cleanQuery.isBlank()) return emptyList()
+        if (cleanQuery.isBlank()) return Result.success(emptyList())
 
-        return try {
+        return runCatching {
             val dtos = apiService.searchPictograms(cleanQuery)
             dtos.map { dto ->
                 val primaryKeyword = dto.keywords.firstOrNull()?.keyword ?: ""
@@ -22,9 +22,8 @@ class SearchArasaacUseCase @Inject constructor(
                     imageUrl = "https://api.arasaac.org/api/pictograms/${dto.id}"
                 )
             }
-        } catch (e: Exception) {
-            // Retrofit will throw HttpException with code 404 if no results are found
-            emptyList()
+        }.onFailure { e ->
+            if (e is kotlinx.coroutines.CancellationException) throw e
         }
     }
 }

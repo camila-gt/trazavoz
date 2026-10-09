@@ -41,6 +41,8 @@ class CachingManager @Inject constructor(
             }
             
             file.absolutePath
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             e.printStackTrace()
             null

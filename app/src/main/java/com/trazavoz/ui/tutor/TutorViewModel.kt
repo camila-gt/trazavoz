@@ -54,12 +54,30 @@ class TutorViewModel @Inject constructor(
     private val _hasSearched = MutableStateFlow(false)
     val hasSearched: StateFlow<Boolean> = _hasSearched.asStateFlow()
 
+    private val _searchError = MutableStateFlow<String?>(null)
+    val searchError: StateFlow<String?> = _searchError.asStateFlow()
+
     fun searchWord(query: String) {
         viewModelScope.launch {
             if (query.isBlank()) return@launch
             _isSearching.value = true
             _hasSearched.value = true
-            _searchResults.value = searchArasaacUseCase(query)
+            _searchError.value = null
+            
+            searchArasaacUseCase(query).fold(
+                onSuccess = { results ->
+                    _searchResults.value = results
+                },
+                onFailure = { e ->
+                    if (e is retrofit2.HttpException && e.code() == 404) {
+                        _searchResults.value = emptyList() // No hay resultados
+                    } else {
+                        _searchResults.value = emptyList()
+                        _searchError.value = "Error de red. Verificá tu conexión."
+                    }
+                }
+            )
+            
             _isSearching.value = false
         }
     }

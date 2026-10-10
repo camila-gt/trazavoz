@@ -69,12 +69,8 @@ class TutorViewModel @Inject constructor(
                     _searchResults.value = results
                 },
                 onFailure = { e ->
-                    if (e is retrofit2.HttpException && e.code() == 404) {
-                        _searchResults.value = emptyList() // No hay resultados
-                    } else {
-                        _searchResults.value = emptyList()
-                        _searchError.value = "Error de red. Verificá tu conexión."
-                    }
+                    _searchResults.value = emptyList()
+                    _searchError.value = pictogramSearchErrorMessage(e)
                 }
             )
             
